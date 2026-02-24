@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus Ops — Multi-Agent Command Center</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Nexus Ops</h1>
+        <p>Impressive localhost web app for coordinating several AI agents</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="runCycleBtn">Run Collaboration Cycle</button>
+        <button id="resetBtn" class="ghost">Reset</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel metrics">
+        <h2>Live Metrics</h2>
+        <div class="metric-grid">
+          <article><span>Throughput</span><strong id="throughput">0 tasks/hr</strong></article>
+          <article><span>Quality Score</span><strong id="quality">0%</strong></article>
+          <article><span>Cycle Time</span><strong id="cycle">0 min</strong></article>
+          <article><span>Blocked Items</span><strong id="blocked">0</strong></article>
+        </div>
+        <canvas id="trendChart" width="560" height="220" aria-label="Trend chart"></canvas>
+      </section>
+
+      <section class="panel board">
+        <h2>Delivery Board</h2>
+        <div class="columns" id="boardColumns"></div>
+      </section>
+
+      <section class="panel agents">
+        <h2>Agent Swarm</h2>
+        <div id="agentGrid" class="agent-grid"></div>
+      </section>
+
+      <section class="panel logs">
+        <h2>Decision Log</h2>
+        <ul id="decisionLog"></ul>
+      </section>
+    </main>
+
+    <template id="agentTemplate">
+      <article class="agent-card">
+        <div>
+          <h3></h3>
+          <p class="role"></p>
+        </div>
+        <p class="status"></p>
+        <div class="progress"><span></span></div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>

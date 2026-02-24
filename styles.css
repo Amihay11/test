@@ -1,0 +1,159 @@
+:root {
+  --bg: #070b14;
+  --panel: #11192a;
+  --accent: #57d6ff;
+  --ok: #57ff9e;
+  --warn: #ffd166;
+  --text: #e9f2ff;
+  --muted: #8ea3c0;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, Segoe UI, Roboto, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top right, #1a2947, var(--bg) 50%);
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #2f4266;
+  background: rgba(7, 11, 20, 0.7);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar h1 { margin: 0; }
+.topbar p { margin: .25rem 0 0; color: var(--muted); }
+.topbar-actions { display: flex; gap: .75rem; }
+
+button {
+  background: linear-gradient(120deg, #36b7ff, #6f8cff);
+  color: #071422;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: .65rem 1rem;
+  cursor: pointer;
+}
+button.ghost {
+  background: transparent;
+  border: 1px solid #5777ad;
+  color: var(--text);
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2fr 1.2fr;
+  grid-template-areas:
+    "metrics board"
+    "agents logs";
+  padding: 1rem 2rem 2rem;
+}
+.panel {
+  background: rgba(17, 25, 42, 0.92);
+  border: 1px solid #2e4064;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 16px 32px rgba(0,0,0,.25);
+}
+.metrics { grid-area: metrics; }
+.board { grid-area: board; }
+.agents { grid-area: agents; }
+.logs { grid-area: logs; }
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: .75rem;
+  margin-bottom: .8rem;
+}
+.metric-grid article {
+  background: #0b1323;
+  border: 1px solid #223355;
+  border-radius: 10px;
+  padding: .6rem;
+}
+.metric-grid span { color: var(--muted); font-size: .85rem; display: block; }
+.metric-grid strong { font-size: 1.2rem; }
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .6rem;
+}
+.column {
+  background: #0c1322;
+  border: 1px solid #23375c;
+  border-radius: 10px;
+  padding: .6rem;
+}
+.column h3 { margin-top: 0; font-size: .95rem; color: var(--accent); }
+.ticket {
+  font-size: .85rem;
+  margin: .4rem 0;
+  padding: .45rem;
+  background: #121c31;
+  border-left: 3px solid #4dc7f5;
+  border-radius: 6px;
+}
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .65rem;
+}
+.agent-card {
+  background: #0b1323;
+  border: 1px solid #27385d;
+  border-radius: 10px;
+  padding: .7rem;
+}
+.agent-card h3 { margin: 0; }
+.role { color: var(--muted); margin: .25rem 0 .5rem; }
+.status { margin: 0 0 .55rem; color: var(--ok); font-size: .9rem; }
+.progress {
+  height: 8px;
+  background: #1a2a49;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #59ffd2, #49b0ff);
+  transition: width .4s ease;
+}
+
+.logs ul, #decisionLog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+#decisionLog li {
+  border-left: 2px solid var(--warn);
+  margin-bottom: .5rem;
+  padding: .4rem .5rem;
+  background: #10192d;
+  font-size: .88rem;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: "metrics" "board" "agents" "logs";
+    padding: 1rem;
+  }
+  .columns { grid-template-columns: repeat(2, 1fr); }
+}
