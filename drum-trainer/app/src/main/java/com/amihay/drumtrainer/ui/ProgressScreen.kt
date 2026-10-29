@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -39,48 +45,60 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Progress graph (spec: "גרף של הטמפו המקסימלי שבו עברת את הסף בכל תרגיל, לאורך
- * השבועות"): one chart per exercise played so far, with its target tempo.
+ * Progress (spec: "גרף של הטמפו המקסימלי שבו עברת את הסף בכל תרגיל, לאורך השבועות"):
+ * a summary, a chart per exercise played so far, and the list of rounds.
  */
 @Composable
 fun ProgressScreen(app: AppState) {
     val runsFlow = remember { app.dao.runRecordsFlow() }
     val runs by runsFlow.collectAsState(initial = emptyList())
     val played = app.exercises.filter { ex -> runs.any { it.exerciseId == ex.id } }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("התקדמות", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { app.screen = Screen.Home }) { Text("חזרה") }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = PagePadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "header") { TabHeader("התקדמות", "הטמפו הגבוה ביותר שבו עברת את הסף, לאורך הזמן") }
+        item(key = "summary") {
+            val days = runs.map { it.startedAt / DAY_MS }.distinct().size
+            val mastered = played.count { Mastery.isMastered(it, runs) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("סבבים", "${runs.size}", Modifier.weight(1f))
+                StatTile("ימי אימון", "$days", Modifier.weight(1f))
+                StatTile("נשלטו", "$mastered", Modifier.weight(1f), color = if (mastered > 0) Palette.good else Color.Unspecified)
+            }
         }
-        if (played.isEmpty()) CenteredNote("עוד אין סבבים. הגרף יתמלא אחרי האימונים הראשונים.")
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item(key = "toggle") { Segmented(listOf(false to "גרפים", true to "היסטוריה"), showHistory, { showHistory = it }) }
+        if (showHistory) {
+            item(key = "history") { HistoryList(app) }
+        } else {
+            if (played.isEmpty()) {
+                item(key = "empty") {
+                    Panel {
+                        Text("עוד אין סבבים", style = MaterialTheme.typography.titleMedium)
+                        Text("הגרפים יתמלאו אחרי האימונים הראשונים.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+                    }
+                }
+            }
             items(played, key = { it.id }) { ex ->
                 val history = Mastery.tempoHistory(ex.id, runs)
                 val mastered = Mastery.isMastered(ex, runs)
-                Column(
-                    Modifier.fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                        .clickable { app.screen = Screen.Practice(ex.id) }
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+                Panel(onClick = { app.screen = Screen.Practice(ex.id) }, spacing = 8.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(ex.nameHe, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                        Text(
-                            when {
-                                mastered -> "נשלט ✓"
-                                history.isEmpty() -> "עוד לא עבר"
-                                else -> "$LRM${history.maxOf { it.second }} / ${ex.targetBpm} BPM"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (mastered) Palette.good else Palette.muted,
-                        )
+                        Text(ex.nameHe, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        when {
+                            mastered -> Pill("נשלט", Palette.good)
+                            history.isEmpty() -> Pill("עוד לא עבר", Palette.muted)
+                            else -> Pill("$LRM${history.maxOf { it.second }} / $LRI${ex.targetBpm} BPM$PDI")
+                        }
                     }
                     if (history.isNotEmpty()) TempoChart(history, ex.startBpm, ex.targetBpm)
                 }
             }
         }
+        item(key = "end") { Spacer(Modifier.height(16.dp)) }
     }
 }
 

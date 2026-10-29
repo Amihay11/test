@@ -14,8 +14,8 @@ android {
         applicationId = "com.amihay.drumtrainer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.9.0"
+        versionCode = 10
+        versionName = "1.0.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -76,6 +76,7 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.05.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 

@@ -1,6 +1,8 @@
 package com.amihay.drumtrainer.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -79,52 +81,49 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    val p = plan
+    Page(
+        "נגינה חופשית",
+        subtitle = "עם ${ex.nameHe}",
+        onBack = {
+            job?.cancel()
+            app.screen = app.home
+        },
+        bottomBar = {
+            if (p != null) QuietButton("סיום", { job?.cancel() }, Modifier.fillMaxWidth())
+            else PrimaryButton(if (result == null) "התחל · $FREE_PLAY_BARS תיבות" else "עוד פעם", ::start,
+                icon = Icons.Filled.PlayArrow)
+        },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text("נגינה חופשית", style = MaterialTheme.typography.headlineMedium)
-                Text("עם ${ex.nameHe}", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+        if (p != null) {
+            val beat = p.beatAt(runner.playhead)
+            Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (beat < 0) "${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}"
+                    else "תיבה ${(floor(beat / p.beatsPerBar).toInt() + 1).coerceAtMost(p.bars)}",
+                    style = MaterialTheme.typography.displayMedium,
+                )
+                Text(if (beat < 0) "ספירה" else "מתוך ${p.bars} · ${runner.onsets.size} מכות",
+                    style = MaterialTheme.typography.titleMedium, color = Palette.muted)
             }
-            OutlinedButton(onClick = {
-                job?.cancel()
-                app.screen = app.home
-            }) { Text(if (app.activeSession != null) "לאימון" else "חזרה") }
+            if (runner.touchInput) TouchInput(app, runner, kit = ex.usesPads)
+            return@Page
         }
         Text(
             "האפליקציה מנגנת לופ של בס ואקורדים בסגנון של ${ex.nameHe}, ואתה מנגן מה שבא לך: הגרוב, וריאציות, " +
                 "מילויים, שקט. אין ציון – בסוף רק תמונה של הזמן.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
-
-        val p = plan
-        if (p != null) {
-            val beat = p.beatAt(runner.playhead)
-            Text(
-                if (beat < 0) "${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}"
-                else "תיבה ${(floor(beat / p.beatsPerBar).toInt() + 1).coerceAtMost(p.bars)} / ${p.bars}",
-                style = MaterialTheme.typography.displayMedium,
-            )
-            Text("${runner.onsets.size} מכות", style = MaterialTheme.typography.titleLarge, color = Palette.muted)
-            if (runner.touchInput) TouchInput(app, runner, kit = ex.usesPads)
-            FilledTonalButton(onClick = { job?.cancel() }, modifier = Modifier.fillMaxWidth()) { Text("סיום") }
-            return@Column
-        }
-
         result?.let { r ->
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("מכות", "${r.hits}")
+            StatGrid {
+                StatTile("מכות", "${r.hits}", Modifier.weight(1f))
                 if (r.hits > 0) {
-                    StatTile("על הגריד", "${r.onGridPct.roundToInt()}%", sub = "בתוך רבע שש-עשרית")
-                    StatTile("פיזור", "${fmt1(r.stdMs)}ms", sub = "ממוצע ${fmtMs(r.meanMs)}ms (${earlyLate(r.meanMs)})")
+                    StatTile("על הגריד", "${r.onGridPct.roundToInt()}%", Modifier.weight(1f), sub = "בתוך רבע שש-עשרית")
+                    StatTile("פיזור", "${fmt1(r.stdMs)}ms", Modifier.weight(1f), sub = "ממוצע ${fmtMs(r.meanMs)}ms · ${earlyLate(r.meanMs)}")
                 }
             }
         }
-        BpmStepper(bpm, { bpm = it })
-        Button(onClick = ::start, modifier = Modifier.fillMaxWidth()) {
-            Text(if (result == null) "התחל ($FREE_PLAY_BARS תיבות)" else "עוד פעם", style = MaterialTheme.typography.titleLarge)
-        }
+        Section("טמפו") { TempoControl(bpm, { bpm = it }) }
     }
 }

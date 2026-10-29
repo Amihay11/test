@@ -15,7 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -92,14 +92,7 @@ fun KitScreen(app: AppState) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("ערכת תופים", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { app.screen = Screen.Home }) { Text("חזרה") }
-        }
+    Page("לימוד התופים שלך", onBack = { app.screen = Screen.Settings }) {
 
         val pad = recording
         if (pad != null) {
@@ -107,25 +100,22 @@ fun KitScreen(app: AppState) {
                 Text(
                     "הכה $HITS_PER_PAD פעמים על ה${pad.he} בלבד, בעוצמות שונות – חזק, בינוני וחלש. " +
                         "השאר רווח קטן בין המכות.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
-                Text("$LRM${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    repeat(HITS_PER_PAD) { i ->
-                        Box(Modifier.size(18.dp).background(if (i < recorded.size) Palette.good else Palette.pending, CircleShape))
-                    }
-                }
-                FilledTonalButton(onClick = {
+                Text("$LRM${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally))
+                Box(Modifier.align(Alignment.CenterHorizontally)) { Dots(recorded.size, HITS_PER_PAD, Palette.good) }
+                QuietButton("ביטול", {
                     recorded.clear()
                     recording = null
-                }) { Text("ביטול") }
+                }, Modifier.fillMaxWidth())
             }
-            return@Column
+            return@Page
         }
 
         Text(
             "כל פד נשמע אחרת דרך הרמקול. מלמדים את האפליקציה פד אחרי פד, ואז בודקים שהיא מזהה נכון.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
         message?.let { Banner(it, Palette.good) }
 
@@ -136,25 +126,25 @@ fun KitScreen(app: AppState) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(p.he, style = MaterialTheme.typography.titleMedium)
-                        Text(if (n == 0) "לא נלמד" else "$n מכות", style = MaterialTheme.typography.bodyMedium,
+                        Text(if (n == 0) "לא נלמד" else "נלמד · $n מכות", style = MaterialTheme.typography.bodySmall,
                             color = if (n == 0) Palette.muted else Palette.good)
                     }
-                    if (n > 0) OutlinedButton(onClick = { app.replacePadSamples(p, emptyList()) }) { Text("מחק") }
-                    Button(onClick = {
+                    if (n > 0) TextButton(onClick = { app.replacePadSamples(p, emptyList()) }) { Text("מחק", color = Palette.muted) }
+                    SecondaryButton(if (n == 0) "למד" else "שוב", {
                         message = null
                         recorded.clear()
                         recording = p
-                    }) { Text(if (n == 0) "למד" else "למד מחדש") }
+                    })
                 }
             }
         }
 
         Section("בדיקה") {
             if (!app.classifier.isUsable) {
-                Text("קודם למד לפחות פד אחד.", style = MaterialTheme.typography.bodyLarge, color = Palette.muted)
+                Text("קודם למד לפחות פד אחד.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
                 return@Section
             }
-            Text("הכה על הפדים – כאן מופיע מה זוהה בכל מכה.", style = MaterialTheme.typography.bodyLarge)
+            Text("הכה על הפדים – כאן מופיע מה זוהה בכל מכה.", style = MaterialTheme.typography.bodyMedium)
             val last = live.firstOrNull()
             Text(
                 last?.let { describe(it.result) } ?: "—",
@@ -186,16 +176,15 @@ fun KitScreen(app: AppState) {
                 }
             }
 
-            Text("בדיקת דיוק: בחר פד, הכה עליו כמה פעמים וראה כמה זוהו נכון.", style = MaterialTheme.typography.bodyLarge)
+            Text("בדיקת דיוק: בחר פד, הכה עליו כמה פעמים וראה כמה זוהו נכון.", style = MaterialTheme.typography.bodyMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 app.classifier.pads.sortedBy { it.ordinal }.forEach { p ->
                     val selected = target == p
-                    val onClick = {
+                    ChoiceChip(p.he, selected) {
                         target = if (selected) null else p
                         correct = 0
                         attempts = 0
                     }
-                    if (selected) Button(onClick = onClick) { Text(p.he) } else FilledTonalButton(onClick = onClick) { Text(p.he) }
                 }
             }
             target?.let { t ->

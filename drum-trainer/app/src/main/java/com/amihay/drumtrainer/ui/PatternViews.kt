@@ -68,15 +68,18 @@ fun ExerciseGrid(
     val rowDp = when {
         rows.size > 5 -> 40
         rows.size > 3 -> 52
-        else -> 72
+        else -> 56
     }
     val isFill = exercise.isFillBar(bar)
+    // Without live states (setup, listening) the notes are shown in the brand colour.
+    val static = states.isEmpty()
+    val topDp = if (isFill) 24 else 6
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Canvas(modifier.fillMaxWidth().height((rows.size * rowDp + 24).dp)) {
+        Canvas(modifier.fillMaxWidth().height((rows.size * rowDp + topDp).dp)) {
             val labelW = 40.dp.toPx()
             val cellW = (size.width - labelW) / steps
-            val top = 24.dp.toPx()
+            val top = topDp.dp.toPx()
             val rowH = (size.height - top) / rows.size
             if (isFill) {
                 drawRect(Palette.off.copy(alpha = 0.10f), Offset(labelW, top), Size(size.width - labelW, size.height - top))
@@ -96,13 +99,15 @@ fun ExerciseGrid(
                     val pad = cellW * 0.1f
                     val h = if (stroke.ghost) rowH * 0.4f else rowH * 0.76f
                     drawRoundRect(
-                        color = stateColor(cellState(states, s, key)),
+                        color = if (static) Palette.accent.copy(alpha = if (stroke.ghost) 0.5f else 0.9f)
+                        else stateColor(cellState(states, s, key)),
                         topLeft = Offset(x + pad, y + (rowH - h) / 2),
                         size = Size(cellW - 2 * pad, h),
                         cornerRadius = CornerRadius(6.dp.toPx()),
                     )
                     if (stroke.accent) {
-                        val t = measurer.ltr(">", TextStyle(color = labelColor, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+                        val t = measurer.ltr(">", TextStyle(color = if (static) Palette.background else labelColor, fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold))
                         drawText(t, topLeft = Offset(x + (cellW - t.size.width) / 2, y + (rowH - t.size.height) / 2))
                     }
                 }
@@ -113,7 +118,7 @@ fun ExerciseGrid(
                 val isBeat = s % exercise.subdivision == 0
                 // Odd meters: thicker lines where a beat group (2+2+3…) starts.
                 val isGroup = isBeat && exercise.beatGroups != null && (s / exercise.subdivision) % exercise.beatsPerBar in groupStarts
-                drawLine(lineColor.copy(alpha = if (isBeat) 0.8f else 0.25f), Offset(x, top), Offset(x, size.height),
+                drawLine(lineColor.copy(alpha = if (isBeat) 0.5f else 0.15f), Offset(x, top), Offset(x, size.height),
                     strokeWidth = if (isGroup) 6f else if (isBeat) 3f else 1f)
             }
             drawCursor(cursorStep, labelW, cellW, top)

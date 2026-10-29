@@ -13,7 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -147,33 +147,27 @@ fun CalibrationScreen(app: AppState) {
         phase = CalPhase.IDLE
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("כיול", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { app.screen = Screen.Home }, enabled = phase == CalPhase.IDLE) { Text("חזרה") }
-        }
+    Page("כיול", onBack = if (phase == CalPhase.IDLE) ({ app.screen = Screen.Settings }) else null) {
         Text(
             "הנח את הטלפון במקום שבו הוא יעמוד באימון, במרחק של כמטר מהרמקול של התופים. " +
                 "את הכיול מספיק לעשות פעם אחת, ושוב רק אם מזיזים רמקול, טלפון או מודול.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
+        message?.let { Banner(it, Palette.accent) }
         if (!app.engine.timestampsAligned) {
             Banner("המכשיר לא מדווח חותמות זמן לאודיו – חזור על הכיול בכל פתיחה של האפליקציה.", Palette.off)
         }
 
         Section("מיקרופון ורגישות") {
-            Text("הכה על הפד: העיגול צריך להבהב פעם אחת לכל מכה, ולא להבהב בשקט.", style = MaterialTheme.typography.bodyLarge)
+            Text("הכה על הפד: העיגול צריך להבהב פעם אחת לכל מכה, ולא להבהב בשקט.", style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 val flashing = now - lastHitAt < 120
                 Box(Modifier.size(48.dp).background(if (flashing) Palette.good else Palette.pending, CircleShape))
                 Text("$hitCount מכות", style = MaterialTheme.typography.titleLarge)
-                OutlinedButton(onClick = { hitCount = 0 }) { Text("איפוס") }
+                TextButton(onClick = { hitCount = 0 }) { Text("איפוס") }
             }
             LevelMeter(level, Modifier.fillMaxWidth())
-            Text("רגישות: ${(app.settings.sensitivity * 100).toInt()}%", style = MaterialTheme.typography.bodyLarge)
+            Text("רגישות: ${(app.settings.sensitivity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
             Slider(
                 value = app.settings.sensitivity,
                 onValueChange = {
@@ -184,21 +178,19 @@ fun CalibrationScreen(app: AppState) {
         }
 
         Section("שלב 1 · השהיית הטלפון") {
-            Text("הטלפון ישמיע 12 קליקים ויקשיב להם. שקט בחדר, אל תנגן.", style = MaterialTheme.typography.bodyLarge)
+            Text("הטלפון ישמיע 12 קליקים ויקשיב להם. שקט בחדר, אל תנגן.", style = MaterialTheme.typography.bodyMedium)
             Text(
                 "נמדד: " + if (app.settings.loopbackMs.isNaN()) "עוד לא" else "${fmt1(app.settings.loopbackMs)}ms",
                 style = MaterialTheme.typography.titleMedium,
             )
-            Button(onClick = { runLoopback() }, enabled = phase == CalPhase.IDLE) {
-                Text(if (phase == CalPhase.LOOPBACK) "מודד…" else "מדוד השהיה")
-            }
+            SecondaryButton(if (phase == CalPhase.LOOPBACK) "מודד…" else "מדוד השהיה", { runLoopback() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
         Section("שלב 2 · נגינה עם הקליק") {
             Text(
-                "אחרי ספירה של 4, נגן רבעים על הסנר יחד עם הקליק – $PAD_BEATS מכות ב-$PAD_BPM BPM. " +
+                "אחרי ספירה של 4, נגן רבעים על הסנר יחד עם הקליק – $PAD_BEATS מכות ב-$LRI$PAD_BPM BPM$PDI. " +
                     "האפליקציה מודדת את ההשהיה של המודול והרמקול ומקזזת אותה מכל מדידה.",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
             )
             Text(
                 "השהיה כוללת: " + if (app.settings.padOffsetMs.isNaN()) "עוד לא" else "${fmt1(app.settings.padOffsetMs)}ms",
@@ -221,16 +213,14 @@ fun CalibrationScreen(app: AppState) {
                     style = MaterialTheme.typography.displayMedium,
                 )
             }
-            Button(onClick = { runPad() }, enabled = phase == CalPhase.IDLE) {
-                Text(if (phase == CalPhase.PAD) "מקשיב…" else "התחל")
-            }
+            SecondaryButton(if (phase == CalPhase.PAD) "מקשיב…" else "התחל", { runPad() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
         Section("אימון בלי תופים · השהיית המסך") {
             Text(
                 "מסך מגע מדווח על הקשה באיחור של כמה עשרות מילישניות. אחרי ספירה של 4, הקש $PAD_BEATS רבעים " +
                     "על אחד הפדים יחד עם הקליק, והאפליקציה תקזז את האיחור הזה.",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
             )
             Text(
                 "השהיית המסך: " + if (app.settings.touchOffsetMs.isNaN()) "עוד לא" else "${fmt1(app.settings.touchOffsetMs)}ms",
@@ -248,24 +238,9 @@ fun CalibrationScreen(app: AppState) {
                 )
                 HandPads(app, onTap = { hand, t -> runner.tap(t, hand = hand) })
             }
-            Button(onClick = { runTouch() }, enabled = phase == CalPhase.IDLE) {
-                Text(if (phase == CalPhase.TOUCH) "מקשיב…" else "התחל")
-            }
+            SecondaryButton(if (phase == CalPhase.TOUCH) "מקשיב…" else "התחל", { runTouch() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
-        message?.let { Banner(it, Palette.accent) }
     }
 }
 
-@Composable
-fun Section(title: String, content: @Composable () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        content()
-    }
-}

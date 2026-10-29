@@ -30,7 +30,8 @@ sealed interface Screen {
     data object Calibration : Screen
     /** Gap metronome, optionally preset by a training session. */
     data class Gap(val setup: GapSetup? = null, val bpm: Int? = null) : Screen
-    data object History : Screen
+    data object Library : Screen
+    data object Settings : Screen
     data object Kit : Screen
     /** An exercise; [bpm] overrides the saved tempo (e.g. 90 % for a review). */
     data class Practice(val exerciseId: String, val bpm: Int? = null) : Screen

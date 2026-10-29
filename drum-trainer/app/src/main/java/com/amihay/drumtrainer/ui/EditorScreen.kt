@@ -3,6 +3,16 @@ package com.amihay.drumtrainer.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -97,161 +107,162 @@ fun EditorScreen(app: AppState, exerciseId: String?) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(if (isSaved) "עריכת תרגיל" else "תרגיל חדש", style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = {
-                playing?.cancel()
-                app.screen = Screen.Home
-            }) { Text("חזרה") }
+    val problems = draft.problems()
+    fun save() {
+        if (problems.isNotEmpty()) {
+            showProblems = true
+        } else {
+            app.saveCustom(draft)
+            app.screen = Screen.Practice(draft.id)
         }
+    }
 
+    Page(
+        if (isSaved) "עריכת תרגיל" else "תרגיל חדש",
+        onBack = {
+            playing?.cancel()
+            app.screen = Screen.Library
+        },
+        actions = {
+            if (isSaved) {
+                IconButton(onClick = { confirmDelete = true }) {
+                    Icon(Icons.Filled.Delete, contentDescription = "מחק", tint = Palette.muted)
+                }
+            }
+        },
+        bottomBar = {
+            if (showProblems && problems.isNotEmpty()) Banner(problems.joinToString(" · "), Palette.off)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (playing == null) {
+                    SecondaryButton("השמע", { if (problems.isEmpty()) preview() else showProblems = true }, icon = Icons.Filled.PlayArrow)
+                } else {
+                    SecondaryButton("עצור", { playing?.cancel() })
+                }
+                PrimaryButton("שמור ונגן", ::save, Modifier.weight(1f), icon = Icons.Filled.Check)
+            }
+        },
+    ) {
         OutlinedTextField(
             value = draft.name,
             onValueChange = { update(draft.copy(name = it)) },
-            label = { Text("שם") },
+            label = { Text("שם התרגיל") },
             singleLine = true,
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Choices("סוג", listOf(DraftKind.GROOVE to "גרוב / מילוי", DraftKind.STICKING to "סטיקינג (פד אחד)"), draft.kind) {
-            update(draft.copy(kind = it))
-        }
-        Choices("נקישות בתיבה", (2..7).map { it to "$it" }, draft.beatsPerBar) { update(draft.copy(beatsPerBar = it)) }
-        Choices("נקישה =", listOf(4 to "רבע", 8 to "שמינית"), draft.beatUnit) { unit ->
-            update(draft.copy(beatUnit = unit, subdivision = if (unit == 8) 1 else maxOf(draft.subdivision, 2)))
-        }
-        val subdivisions = if (draft.beatUnit == 8) listOf(1 to "שמיניות", 2 to "שש-עשריות")
-        else listOf(2 to "שמיניות", 3 to "טריולות", 4 to "שש-עשריות", 6 to "סקסטולות")
-        Choices("חלוקה", subdivisions, draft.subdivision) { update(draft.copy(subdivision = it)) }
-        if (draft.beatsPerBar >= 5 || draft.beatUnit == 8) {
-            OutlinedTextField(
-                value = groupsText,
-                onValueChange = {
-                    groupsText = it
-                    update(draft.copy(beatGroups = ExerciseDraft.parseGroups(it)))
-                },
-                label = { Text("חלוקה לקבוצות (למשל 2+2+3)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (draft.kind == DraftKind.GROOVE) {
-            Text("תופים:", style = MaterialTheme.typography.bodyLarge)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EDITOR_PADS.forEach { pad ->
-                    val on = pad in draft.pads
-                    val toggle = {
-                        val pads = if (on) draft.pads - pad else draft.pads + pad
-                        update(draft.copy(pads = EDITOR_PADS.filter { it in pads }))
+        Section("מבנה") {
+            Field("סוג") {
+                Segmented(listOf(DraftKind.GROOVE to "גרוב / מילוי", DraftKind.STICKING to "סטיקינג"), draft.kind, {
+                    update(draft.copy(kind = it))
+                })
+            }
+            Field("נקישות בתיבה") {
+                Segmented((2..7).map { it to "$it" }, draft.beatsPerBar, { update(draft.copy(beatsPerBar = it)) })
+            }
+            Field("נקישה") {
+                Segmented(listOf(4 to "רבע", 8 to "שמינית"), draft.beatUnit, { unit ->
+                    update(draft.copy(beatUnit = unit, subdivision = if (unit == 8) 1 else maxOf(draft.subdivision, 2)))
+                })
+            }
+            val subdivisions = if (draft.beatUnit == 8) listOf(1 to "שמיניות", 2 to "שש-עשריות")
+            else listOf(2 to "שמיניות", 3 to "טריולות", 4 to "16", 6 to "שישיות")
+            Field("חלוקה") { Segmented(subdivisions, draft.subdivision, { update(draft.copy(subdivision = it)) }) }
+            if (draft.beatsPerBar >= 5 || draft.beatUnit == 8) {
+                OutlinedTextField(
+                    value = groupsText,
+                    onValueChange = {
+                        groupsText = it
+                        update(draft.copy(beatGroups = ExerciseDraft.parseGroups(it)))
+                    },
+                    label = { Text("חלוקה לקבוצות (למשל 2+2+3)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (draft.kind == DraftKind.GROOVE) {
+                Field("תופים") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EDITOR_PADS.forEach { pad ->
+                            val on = pad in draft.pads
+                            ChoiceChip(pad.he, on) {
+                                val pads = if (on) draft.pads - pad else draft.pads + pad
+                                update(draft.copy(pads = EDITOR_PADS.filter { it in pads }))
+                            }
+                        }
                     }
-                    if (on) Button(onClick = toggle) { Text(pad.he) } else FilledTonalButton(onClick = toggle) { Text(pad.he) }
                 }
             }
         }
 
-        // Bars: pick, add, remove, and mark as a fill.
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            itemVerticalAlignment = Alignment.CenterVertically,
-        ) {
-            draft.bars.indices.forEach { i ->
-                val label = "תיבה ${i + 1}" + if (draft.bars[i].fill) " · מילוי" else ""
-                if (i == bar) Button(onClick = {}) { Text(label) } else FilledTonalButton(onClick = { bar = i }) { Text(label) }
-            }
-            if (draft.bars.size < MAX_BARS) {
-                OutlinedButton(onClick = {
-                    // A new bar starts as a copy of the current one: most bars are variations.
-                    update(draft.copy(bars = draft.bars + draft.bars[bar].copy(fill = false)))
-                    bar = draft.bars.lastIndex
-                }) { Text("+ תיבה") }
-            }
-            if (draft.bars.size > 1) {
-                OutlinedButton(onClick = { update(draft.copy(bars = draft.bars.filterIndexed { i, _ -> i != bar })) }) {
-                    Text("− תיבה")
+        Section("תיבות") {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                draft.bars.indices.forEach { i ->
+                    ChoiceChip("תיבה ${i + 1}" + if (draft.bars[i].fill) " · מילוי" else "", i == bar) { bar = i }
                 }
-            }
-        }
-        if (draft.kind == DraftKind.GROOVE && draft.bars.size > 1) {
-            val fill = draft.bars[bar].fill
-            OutlinedButton(onClick = {
-                update(draft.copy(bars = draft.bars.toMutableList().also { it[bar] = it[bar].copy(fill = !fill) }))
-            }) { Text(if (fill) "תיבה ${bar + 1} היא מילוי ✓" else "סמן את תיבה ${bar + 1} כמילוי") }
-        }
-
-        Text("לחיצה על משבצת: מכה → הדגשה → " + if (draft.kind == DraftKind.GROOVE) "מכת רפאים → ריק" else "ריק",
-            style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
-        EditorGrid(draft, bar) { row, step -> update(draft.tap(bar, row, step)) }
-
-        if (draft.subdivision % 2 == 0) {
-            val swing = draft.swing
-            OutlinedButton(onClick = { update(draft.copy(swing = if (swing == null) 66 else null)) }) {
-                Text(if (swing == null) "הוסף סווינג" else "בלי סווינג")
-            }
-            if (swing != null) {
-                Text("סווינג ברירת מחדל: $swing%", style = MaterialTheme.typography.titleMedium)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Slider(value = swing.toFloat(), onValueChange = { update(draft.copy(swing = it.roundToInt())) },
-                        valueRange = 50f..75f, steps = 24)
+                if (draft.bars.size < MAX_BARS) {
+                    TextButton(onClick = {
+                        // A new bar starts as a copy of the current one: most bars are variations.
+                        update(draft.copy(bars = draft.bars + draft.bars[bar].copy(fill = false)))
+                        bar = draft.bars.lastIndex
+                    }) { Text("+ תיבה") }
                 }
-            }
-        }
-
-        Text("טמפו התחלתי", style = MaterialTheme.typography.bodyLarge)
-        BpmStepper(draft.startBpm, { update(draft.copy(startBpm = it)) })
-        Text("טמפו יעד", style = MaterialTheme.typography.bodyLarge)
-        BpmStepper(draft.targetBpm, { update(draft.copy(targetBpm = it)) })
-
-        val problems = draft.problems()
-        if (showProblems && problems.isNotEmpty()) Banner(problems.joinToString(" · "), Palette.off)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (playing == null) {
-                FilledTonalButton(onClick = { if (problems.isEmpty()) preview() else showProblems = true }) { Text("🔊 השמע") }
-            } else {
-                FilledTonalButton(onClick = { playing?.cancel() }) { Text("עצור") }
-            }
-            Button(onClick = {
-                if (problems.isNotEmpty()) {
-                    showProblems = true
-                } else {
-                    app.saveCustom(draft)
-                    app.screen = Screen.Practice(draft.id)
-                }
-            }) { Text("שמור ונגן") }
-            if (isSaved) {
-                OutlinedButton(onClick = {
-                    if (confirmDelete) {
-                        app.deleteCustom(draft.id)
-                        app.screen = Screen.Home
-                    } else {
-                        confirmDelete = true
+                if (draft.bars.size > 1) {
+                    TextButton(onClick = { update(draft.copy(bars = draft.bars.filterIndexed { i, _ -> i != bar })) }) {
+                        Text("הסר תיבה", color = Palette.muted)
                     }
-                }) { Text(if (confirmDelete) "בטוח? מחק" else "מחק") }
+                }
+            }
+            if (draft.kind == DraftKind.GROOVE && draft.bars.size > 1) {
+                val fill = draft.bars[bar].fill
+                ListRow("תיבה ${bar + 1} היא מילוי", "בסוף מילוי נמדדת הנחיתה על ה-1") {
+                    Switch(checked = fill, onCheckedChange = {
+                        update(draft.copy(bars = draft.bars.toMutableList().also { b -> b[bar] = b[bar].copy(fill = it) }))
+                    })
+                }
+            }
+            Text("לחיצה על משבצת: מכה ← הדגשה ← " + if (draft.kind == DraftKind.GROOVE) "מכת רפאים ← ריק" else "ריק",
+                style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+            EditorGrid(draft, bar) { row, step -> update(draft.tap(bar, row, step)) }
+        }
+
+        Section("טמפו וסווינג") {
+            Field("טמפו התחלתי") { TempoControl(draft.startBpm, { update(draft.copy(startBpm = it)) }) }
+            Field("טמפו יעד") { TempoControl(draft.targetBpm, { update(draft.copy(targetBpm = it)) }) }
+            if (draft.subdivision % 2 == 0) {
+                val swing = draft.swing
+                ListRow("סווינג", if (swing == null) "ישר" else "$swing%") {
+                    Switch(checked = swing != null, onCheckedChange = { update(draft.copy(swing = if (it) 66 else null)) })
+                }
+                if (swing != null) {
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Slider(value = swing.toFloat(), onValueChange = { update(draft.copy(swing = it.roundToInt())) },
+                            valueRange = 50f..75f, steps = 24)
+                    }
+                }
             }
         }
         if (playing != null) Text("מנגן…", style = MaterialTheme.typography.bodyMedium, color = Palette.accent)
     }
-}
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun <T> Choices(label: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        itemVerticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("$label:", style = MaterialTheme.typography.bodyLarge)
-        options.forEach { (value, name) ->
-            if (value == selected) Button(onClick = {}) { Text(name) }
-            else FilledTonalButton(onClick = { onSelect(value) }) { Text(name) }
-        }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("למחוק את התרגיל?") },
+            text = { Text("ההיסטוריה שלו תישאר, אבל התרגיל עצמו יימחק.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    app.deleteCustom(draft.id)
+                    app.screen = Screen.Library
+                }) { Text("מחק", color = Palette.bad) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("ביטול") } },
+        )
     }
 }
 

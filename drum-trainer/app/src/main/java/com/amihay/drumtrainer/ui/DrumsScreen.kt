@@ -2,6 +2,12 @@ package com.amihay.drumtrainer.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -83,60 +89,57 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("תופים על המסך", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = {
-                stop()
-                app.screen = back
-            }) { Text("חזרה") }
-        }
-        Text("הקש על התופים כדי לשמוע אותם. בחר קצב ולחץ \"נגן\" כדי לראות אותו מתנגן.",
-            style = MaterialTheme.typography.bodyLarge, color = Palette.muted)
+    val isTab = back == Screen.Home
+    val p = plan
+    Column(Modifier.fillMaxSize()) {
+        if (!isTab) TopBar("תופים על המסך", onBack = {
+            stop()
+            app.screen = back
+        })
+        Column(
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PagePadding),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (isTab) TabHeader("מערכת", "הקש על התופים כדי לשמוע אותם, או בחר קצב וראה אותו מתנגן")
 
-        val p = plan
-        DrumKitView(
-            app,
-            appLights = if (p != null) appLights(p.clicks, runner.playhead, p.sampleRate) else emptyMap(),
-        )
+            Panel(color = Palette.surface, padding = 10.dp) {
+                DrumKitView(app, appLights = if (p != null) appLights(p.clicks, runner.playhead, p.sampleRate) else emptyMap())
+            }
 
-        val beat = p?.beatAt(runner.playhead)
-        val bar = if (p != null && beat != null && beat >= 0) floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1) else 0
-        val cycleBar = bar % ex.cycleBars
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(ex.nameHe, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            if (p != null && beat != null) {
-                Text(
-                    if (beat < 0) "ספירה…" else "תיבה ${bar + 1} / ${p.bars}",
-                    style = MaterialTheme.typography.titleMedium, color = Palette.accent,
+            if (p != null) QuietButton("עצור", ::stop, Modifier.fillMaxWidth())
+            else PrimaryButton("נגן את ${ex.nameHe} · $LRI$bpm BPM$PDI", ::play, icon = Icons.Filled.PlayArrow)
+
+            val beat = p?.beatAt(runner.playhead)
+            val bar = if (p != null && beat != null && beat >= 0) floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1) else 0
+            val cycleBar = bar % ex.cycleBars
+            Section(
+                ex.nameHe,
+                trailing = {
+                    if (p != null && beat != null) {
+                        Pill(if (beat < 0) "ספירה…" else "תיבה ${bar + 1} / ${p.bars}")
+                    } else {
+                        SmallAction("החלף קצב", Icons.Filled.Search) { picking = true }
+                    }
+                },
+            ) {
+                PatternView(
+                    app, ex, cycleBar, emptyMap(),
+                    if (p != null && beat != null && beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null,
                 )
+                if (p == null) {
+                    TempoControl(bpm, { bpm = it })
+                    ListRow("מטרונום", if (metronome) "מנגן יחד עם התופים" else "רק ספירה בהתחלה") {
+                        Switch(checked = metronome, onCheckedChange = { metronome = it })
+                    }
+                }
             }
-        }
-        PatternView(
-            app, ex, cycleBar, emptyMap(),
-            if (p != null && beat != null && beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null,
-        )
 
-        if (p != null) {
-            Button(onClick = ::stop, modifier = Modifier.fillMaxWidth()) {
-                Text("עצור", style = MaterialTheme.typography.titleLarge)
+            if (p == null) {
+                SecondaryButton("לתרגל את הקצב הזה", { app.screen = Screen.Practice(ex.id) }, Modifier.fillMaxWidth())
             }
-        } else {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = { picking = true }) { Text("בחר קצב") }
-                ViewToggle(app)
-                OutlinedButton(onClick = { metronome = !metronome }) { Text(if (metronome) "מטרונום: פועל" else "מטרונום: כבוי") }
-                FilledTonalButton(onClick = { app.screen = Screen.Practice(ex.id) }) { Text("לתרגל את זה") }
-            }
-            BpmStepper(bpm, { bpm = it })
-            Button(onClick = ::play, modifier = Modifier.fillMaxWidth()) {
-                Text("▶ נגן", style = MaterialTheme.typography.titleLarge)
-            }
+            Text(SAMPLE_CREDIT, style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+            Spacer(Modifier.height(12.dp))
         }
-        Text(SAMPLE_CREDIT, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
     }
 
     if (picking) {
@@ -165,7 +168,7 @@ private fun ExercisePicker(exercises: List<Exercise>, onPick: (Exercise) -> Unit
                 items(sorted, key = { it.id }) { e ->
                     Column(Modifier.fillMaxWidth().clickable { onPick(e) }.padding(vertical = 10.dp)) {
                         Text(e.nameHe, style = MaterialTheme.typography.titleMedium)
-                        Text("${e.name} · ${e.startBpm}–${e.targetBpm} BPM", style = MaterialTheme.typography.bodyMedium,
+                        Text("${e.name} · $LRI${e.startBpm}–${e.targetBpm} BPM$PDI", style = MaterialTheme.typography.bodyMedium,
                             color = Palette.muted)
                     }
                 }

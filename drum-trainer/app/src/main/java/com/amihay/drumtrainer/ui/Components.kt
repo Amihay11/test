@@ -2,6 +2,8 @@ package com.amihay.drumtrainer.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -119,35 +121,30 @@ fun LevelMeter(peak: Float, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun BpmStepper(bpm: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
-    // Numeric control: minus on the left, plus on the right, like any tempo knob.
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = { onChange((bpm - 4).coerceAtLeast(30)) }, enabled = enabled) { Text("−4") }
-            FilledTonalButton(onClick = { onChange((bpm - 1).coerceAtLeast(30)) }, enabled = enabled) { Text("−1") }
-            Text("$bpm", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 4.dp))
-            FilledTonalButton(onClick = { onChange((bpm + 1).coerceAtMost(260)) }, enabled = enabled) { Text("+1") }
-            FilledTonalButton(onClick = { onChange((bpm + 4).coerceAtMost(260)) }, enabled = enabled) { Text("+4") }
-        }
-    }
-}
+fun BpmStepper(bpm: Int, onChange: (Int) -> Unit, enabled: Boolean = true) = TempoControl(bpm, onChange, enabled = enabled)
 
 @Composable
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified, sub: String? = null) {
     Column(
         modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .padding(12.dp)
-            .width(150.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(Palette.surface)
+            .border(1.dp, Palette.outline.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.headlineMedium, color = color)
-        if (sub != null) Text(sub, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Palette.muted, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.headlineMedium, color = color, maxLines = 1)
+        if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = Palette.muted, maxLines = 2)
     }
 }
 
 /** Left-to-right mark: keeps "+3.2ms" from rendering as "3.2ms+" inside Hebrew text. */
 const val LRM = "\u200E"
+
+/** Left-to-right isolate and its end: keeps "70 BPM" in order inside Hebrew text. */
+const val LRI = "\u2066"
+const val PDI = "\u2069"
 
 fun fmtMs(v: Double): String = LRM + String.format(java.util.Locale.US, "%+.1f", v)
 fun fmt1(v: Double): String = LRM + String.format(java.util.Locale.US, "%.1f", v)
