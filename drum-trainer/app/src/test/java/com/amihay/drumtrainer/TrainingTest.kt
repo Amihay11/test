@@ -50,6 +50,17 @@ class TrainingTest {
     }
 
     @Test
+    fun warmUpDoesNotRepeatTodaysTechnique() {
+        // Played outside any session, so there is nothing to review yet.
+        val runs = listOf(run("single_stroke_roll", 64, false, 0, null))
+        val plan = SessionPlanner.plan(exercises, runs, emptyMap(), t0 + DAY_MS)
+        val warmUp = plan.parts.first { it.kind == PartKind.REVIEW }.items.map { it.exerciseId }
+        val technique = plan.parts.first { it.kind == PartKind.TECHNIQUE }.items.map { it.exerciseId }
+        assertEquals(1, warmUp.size)
+        assertTrue(warmUp.intersect(technique.toSet()).isEmpty())
+    }
+
+    @Test
     fun reviewRepeatsLastSessionAtNinetyPercent() {
         val runs = listOf(
             run("single_paradiddle", 80, true, 0, 7),

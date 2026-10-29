@@ -118,12 +118,6 @@ object SessionPlanner {
                 val best = Mastery.bestPassedBpm(ex.id, runs) ?: ex.targetBpm
                 review += SessionItem(ex.id, null, (best * REVIEW_FACTOR).roundToInt(), "חזרה מרווחת: נשלט, לא נוגן ${REVIEW_AFTER_DAYS}+ ימים")
             }
-        if (review.isEmpty()) {
-            exercises.firstOrNull { it.kind == ExerciseKind.RUDIMENT }?.let {
-                review += SessionItem(it.id, null, it.startBpm, "חימום")
-            }
-        }
-
         // 2. Technique: one new rudiment and one in progress (least recently played).
         val rudiments = exercises.filter { it.kind == ExerciseKind.RUDIMENT }
         val newOnes = rudiments.filter { it.id !in lastPlayed }
@@ -134,6 +128,14 @@ object SessionPlanner {
                 rudiments.minByOrNull { lastPlayed[it.id] ?: 0 }?.let { listOf(SessionItem(it.id, null, bpmFor(it), "שמירה על כושר")) }
                     ?: emptyList()
             }
+
+        // Nothing to review yet: warm up on a rudiment that is not in today's technique part.
+        if (review.isEmpty()) {
+            val inTechnique = technique.map { it.exerciseId }.toSet()
+            (rudiments.firstOrNull { it.id !in inTechnique } ?: rudiments.firstOrNull())?.let {
+                review += SessionItem(it.id, null, bpmFor(it), "חימום")
+            }
+        }
 
         // 3. Timing: the gap metronome, one setup harder once the silences are steady.
         val gapRuns = runs.filter { GapSetup.fromId(it.exerciseId) != null }.sortedBy { it.startedAt }
