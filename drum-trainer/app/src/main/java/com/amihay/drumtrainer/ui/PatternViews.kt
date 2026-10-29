@@ -188,12 +188,18 @@ fun NotationView(
                 }
             } ?: (0 until exercise.beatsPerBar).map { b -> (b * exercise.subdivision) until ((b + 1) * exercise.subdivision) }
 
+            // With a ride in the pattern the hi-hat is played by the foot (jazz, latin):
+            // written below the staff in the feet voice.
+            val footHat = Pad.RIDE in exercise.pads
+            fun isFoot(pad: Pad?) = pad == Pad.KICK || (footHat && pad == Pad.HIHAT)
+            fun pos(pad: Pad?) = if (footHat && pad == Pad.HIHAT) 9 else staffPos(pad)
+
             // Two voices: hands (stems up) and feet (stems down).
             for (down in listOf(false, true)) {
                 val stemEnd = if (down) stemDownEnd else stemUpEnd
                 val stemSteps = ArrayList<Int>()
                 for (s in 0 until steps) {
-                    val strokes = exercise.strokesAt(bar * steps + s).filter { (it.pad == Pad.KICK) == down }
+                    val strokes = exercise.strokesAt(bar * steps + s).filter { isFoot(it.pad) == down }
                     if (strokes.isEmpty()) continue
                     stemSteps += s
                     val x = stepX(s)
@@ -202,11 +208,11 @@ fun NotationView(
                             StepState.PENDING -> ink
                             else -> stateColor(state)
                         }
-                        drawHead(measurer, x, y(staffPos(st.pad)), gap, color, isCymbal(st.pad), st.ghost)
-                        if (staffPos(st.pad) <= -2) drawLine(ink, Offset(x - gap, y(-2)), Offset(x + gap, y(-2)), 1.5f)
+                        drawHead(measurer, x, y(pos(st.pad)), gap, color, isCymbal(st.pad), st.ghost)
+                        if (pos(st.pad) <= -2) drawLine(ink, Offset(x - gap, y(-2)), Offset(x + gap, y(-2)), 1.5f)
                     }
                     val headX = if (down) x - gap * 0.55f else x + gap * 0.55f
-                    val nearest = if (down) strokes.minOf { y(staffPos(it.pad)) } else strokes.maxOf { y(staffPos(it.pad)) }
+                    val nearest = if (down) strokes.minOf { y(pos(it.pad)) } else strokes.maxOf { y(pos(it.pad)) }
                     drawLine(ink, Offset(headX, nearest), Offset(headX, stemEnd), 2f)
                     if (!down && strokes.any { it.accent }) {
                         val t = measurer.ltr(">", TextStyle(color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold))
@@ -217,6 +223,8 @@ fun NotationView(
                 for ((beat, range) in beamRanges.withIndex()) {
                     val inBeat = stemSteps.filter { it in range }
                     if (inBeat.isEmpty() || beams == 0) continue
+                    // A lone note on the beat lasts until the next one: written as a quarter, no flag.
+                    if (inBeat.size == 1 && inBeat.first() == range.first) continue
                     val dx = if (down) -gap * 0.55f else gap * 0.55f
                     for (b in 0 until beams) {
                         val by = if (down) stemEnd - b * 6.dp.toPx() else stemEnd + b * 6.dp.toPx()
