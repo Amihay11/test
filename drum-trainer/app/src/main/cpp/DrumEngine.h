@@ -66,6 +66,10 @@ public:
     // current schedule; call before setClicks.
     void setBacking(const std::vector<backing::Note> &notes, int loopFrames);
 
+    // Replaces the synthesized sound of a drum (0..7, the Pad order) with a recorded
+    // sample, resampled to the stream rate. Kept across restarts.
+    void setPadSample(int pad, std::vector<float> samples, int sampleRate);
+
     // Plays a sound as soon as possible (a tap on the on-screen drums). Any thread.
     void trigger(int type, float gain);
 
@@ -91,6 +95,20 @@ private:
     void updateAlignment();
     void renderClicks(float *out, int32_t numFrames, int64_t firstFrame);
     void startVoice(int type, int64_t frame, float gain);
+    void waitForCallbacks();
+    std::vector<float> padSound(int pad) const;
+    bool isPadSound(const std::vector<float> *s) const {
+        return s >= &clickSounds_[kPadSoundBase] && s < &clickSounds_[kPadSoundBase + kNumPadSamples];
+    }
+
+    static constexpr int kNumPadSamples = 8;
+    struct Sample {
+        std::vector<float> data;
+        int rate = 0;
+    };
+    Sample padSamples_[kNumPadSamples];
+    // While a drum sound is being replaced, no drum voice plays.
+    std::atomic<bool> swappingPads_{false};
     void buildClickSounds();
 
     std::shared_ptr<oboe::AudioStream> output_;

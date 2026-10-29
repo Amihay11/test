@@ -72,6 +72,14 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetBacking)(JNIEnv *env, jobject, jintArray 
     engine().setBacking(notes, loopFrames);
 }
 
+JNIEXPORT void JNICALL JNI_FN(nativeSetPadSample)(JNIEnv *env, jobject, jint pad, jfloatArray samples,
+                                                   jint sampleRate) {
+    jsize n = env->GetArrayLength(samples);
+    std::vector<float> data(n);
+    env->GetFloatArrayRegion(samples, 0, n, data.data());
+    engine().setPadSample(pad, std::move(data), sampleRate);
+}
+
 JNIEXPORT void JNICALL JNI_FN(nativeTrigger)(JNIEnv *, jobject, jint type, jfloat gain) {
     engine().trigger(type, gain);
 }

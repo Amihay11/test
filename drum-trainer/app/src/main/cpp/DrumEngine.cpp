@@ -160,8 +160,49 @@ void DrumEngine::buildClickSounds() {
     clickSounds_[kClickBroadband] = burst;
 
     auto kit = drumkit::build(sampleRate_);
-    for (int p = 0; p < drumkit::kNumPads; ++p) clickSounds_[kPadSoundBase + p] = std::move(kit[p]);
+    for (int p = 0; p < drumkit::kNumPads; ++p) {
+        std::vector<float> recorded = p < kNumPadSamples ? padSound(p) : std::vector<float>{};
+        clickSounds_[kPadSoundBase + p] = recorded.empty() ? std::move(kit[p]) : std::move(recorded);
+    }
     for (int g = 0; g < guide::kNumTones; ++g) clickSounds_[kGuideSoundBase + g] = guide::tone(sampleRate_, guide::kFreqs[g]);
+}
+
+std::vector<float> DrumEngine::padSound(int pad) const {
+    const Sample &s = padSamples_[pad];
+    if (s.data.empty() || s.rate <= 0) return {};
+    if (s.rate == sampleRate_) return s.data;
+    // Linear interpolation; the samples ship at 48 kHz, the usual device rate.
+    double step = static_cast<double>(s.rate) / sampleRate_;
+    size_t n = static_cast<size_t>((s.data.size() - 1) / step);
+    std::vector<float> out(n);
+    for (size_t i = 0; i < n; ++i) {
+        double t = i * step;
+        size_t k = static_cast<size_t>(t);
+        double f = t - k;
+        out[i] = static_cast<float>(s.data[k] * (1 - f) + s.data[k + 1] * f);
+    }
+    return out;
+}
+
+void DrumEngine::setPadSample(int pad, std::vector<float> samples, int sampleRate) {
+    if (pad < 0 || pad >= kNumPadSamples) return;
+    std::lock_guard<std::mutex> lock(lifecycleMutex_);
+    padSamples_[pad] = Sample{std::move(samples), sampleRate};
+    if (!running_.load()) return;  // start() builds the sounds
+    std::vector<float> sound = padSound(pad);
+    if (sound.empty()) return;
+    swappingPads_.store(true, std::memory_order_release);
+    waitForCallbacks();
+    clickSounds_[kPadSoundBase + pad] = std::move(sound);
+    swappingPads_.store(false, std::memory_order_release);
+}
+
+void DrumEngine::waitForCallbacks() {
+    if (!running_.load()) return;
+    uint64_t seen = callbackCount_.load();
+    for (int i = 0; i < 200 && callbackCount_.load() < seen + 2; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 }
 
 void DrumEngine::setClicks(const std::vector<ScheduledClick> &clicks) {
@@ -175,12 +216,7 @@ void DrumEngine::clearClicks() {
     clicksActive_.store(false, std::memory_order_release);
     // Wait until the audio thread has finished any callback that may still be reading
     // the old schedule.
-    if (running_.load()) {
-        uint64_t seen = callbackCount_.load();
-        for (int i = 0; i < 200 && callbackCount_.load() < seen + 2; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    }
+    waitForCallbacks();
 }
 
 void DrumEngine::setBacking(const std::vector<backing::Note> &notes, int loopFrames) {
@@ -188,12 +224,7 @@ void DrumEngine::setBacking(const std::vector<backing::Note> &notes, int loopFra
     clearClicks();
     // Silence any voice still playing the old loop before its buffer is replaced.
     dropBacking_.store(true, std::memory_order_release);
-    if (running_.load()) {
-        uint64_t seen = callbackCount_.load();
-        for (int i = 0; i < 200 && callbackCount_.load() < seen + 2; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    }
+    waitForCallbacks();
     clickSounds_[kBackingSound] = std::move(rendered);
     dropBacking_.store(false, std::memory_order_release);
 }
@@ -218,6 +249,8 @@ int64_t DrumEngine::playheadFrame() {
 }
 
 void DrumEngine::startVoice(int type, int64_t frame, float gain) {
+    const std::vector<float> *sound = &clickSounds_[std::clamp(type, 0, kNumSounds - 1)];
+    if (isPadSound(sound) && swappingPads_.load(std::memory_order_acquire)) return;
     // Free voice, or else steal the one that started longest ago.
     Voice *slot = &voices_[0];
     for (auto &v : voices_) {
@@ -227,7 +260,7 @@ void DrumEngine::startVoice(int type, int64_t frame, float gain) {
         }
         if (v.startFrame < slot->startFrame) slot = &v;
     }
-    slot->sound = &clickSounds_[std::clamp(type, 0, kNumSounds - 1)];
+    slot->sound = sound;
     slot->startFrame = frame;
     slot->gain = gain;
 }
@@ -254,6 +287,11 @@ void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame)
     if (dropBacking_.load(std::memory_order_acquire)) {
         for (auto &v : voices_) {
             if (v.sound == &clickSounds_[kBackingSound]) v.sound = nullptr;
+        }
+    }
+    if (swappingPads_.load(std::memory_order_acquire)) {
+        for (auto &v : voices_) {
+            if (isPadSound(v.sound)) v.sound = nullptr;
         }
     }
     for (auto &v : voices_) {

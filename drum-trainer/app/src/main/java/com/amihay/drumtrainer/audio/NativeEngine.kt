@@ -5,6 +5,7 @@ import com.amihay.drumtrainer.model.BackingLoop
 import com.amihay.drumtrainer.model.Click
 import com.amihay.drumtrainer.model.HitFeatures
 import com.amihay.drumtrainer.model.Onset
+import com.amihay.drumtrainer.model.Pad
 
 /** JNI bindings to the C++ engine (see app/src/main/cpp). */
 object NativeEngine {
@@ -22,6 +23,7 @@ object NativeEngine {
     external fun nativeSetClicks(frames: LongArray, types: IntArray, gains: FloatArray)
     external fun nativeClearClicks()
     external fun nativeTrigger(type: Int, gain: Float)
+    external fun nativeSetPadSample(pad: Int, samples: FloatArray, sampleRate: Int)
     external fun nativeSetBacking(
         starts: IntArray, lengths: IntArray, midis: IntArray, gains: FloatArray, instruments: IntArray, loopFrames: Int,
     )
@@ -72,6 +74,10 @@ class AudioEngine {
     }
 
     fun clearClicks() = NativeEngine.nativeClearClicks()
+
+    /** Gives [pad] a recorded sound instead of the synthesized one. */
+    fun setPadSample(pad: Pad, samples: FloatArray, sampleRate: Int) =
+        NativeEngine.nativeSetPadSample(pad.ordinal, samples, sampleRate)
 
     /** Plays a sound right away (a tap on the on-screen drums). */
     fun trigger(type: Int, gain: Float = 0.8f) = NativeEngine.nativeTrigger(type, gain)

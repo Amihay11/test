@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.amihay.drumtrainer.data.SAMPLE_CREDIT
 import com.amihay.drumtrainer.model.ClickType
 import com.amihay.drumtrainer.model.Exercise
 import com.amihay.drumtrainer.model.RoundPlan
@@ -135,6 +136,7 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
                 Text("▶ נגן", style = MaterialTheme.typography.titleLarge)
             }
         }
+        Text(SAMPLE_CREDIT, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
     }
 
     if (picking) {

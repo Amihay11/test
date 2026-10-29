@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import com.amihay.drumtrainer.audio.AudioEngine
 import com.amihay.drumtrainer.data.AppDatabase
 import com.amihay.drumtrainer.data.CustomExerciseStore
+import com.amihay.drumtrainer.data.loadDrumSamples
 import com.amihay.drumtrainer.data.PadStore
 import com.amihay.drumtrainer.data.Settings
 import com.amihay.drumtrainer.model.DrumClassifier
@@ -70,7 +71,7 @@ fun itemKey(item: SessionItem, kind: PartKind): String = when {
 
 /** Everything the screens share. Lives as long as the activity. */
 class AppState(context: Context) {
-    val engine = AudioEngine()
+    val engine = AudioEngine().also { loadDrumSamples(context, it) }
     val settings = Settings(context)
     val dao = AppDatabase.get(context).dao()
     private val builtIn: List<Exercise> = listOf("rudiments", "grooves", "styles").flatMap { name ->
