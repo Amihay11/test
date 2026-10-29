@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -58,8 +59,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             DrumTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
-                        if (hasMic) AppContent(app) else PermissionNeeded { askMic.launch(Manifest.permission.RECORD_AUDIO) }
+                    // Surface provides the default (light) text colour for the dark theme.
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Box(Modifier.safeDrawingPadding()) {
+                            if (hasMic) AppContent(app) else PermissionNeeded { askMic.launch(Manifest.permission.RECORD_AUDIO) }
+                        }
                     }
                 }
             }

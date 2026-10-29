@@ -247,9 +247,13 @@ private fun RoundResults(ex: Exercise, o: Outcome) {
         style = MaterialTheme.typography.bodyLarge,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        StatTile("סטיית תקן", "${fmt1(s.stdMs)}ms",
-            color = if (s.stdMs <= ex.passStdMs) Palette.good else Palette.off, sub = "יציבות – המדד המרכזי")
-        StatTile("סטייה ממוצעת", "${fmtMs(s.meanMs)}ms", sub = earlyLate(s.meanMs))
+        if (s.hits == 0) {
+            StatTile("סטיית תקן", "—", sub = "לא זוהו מכות")
+        } else {
+            StatTile("סטיית תקן", "${fmt1(s.stdMs)}ms",
+                color = if (s.stdMs <= ex.passStdMs) Palette.good else Palette.off, sub = "יציבות – המדד המרכזי")
+            StatTile("סטייה ממוצעת", "${fmtMs(s.meanMs)}ms", sub = earlyLate(s.meanMs))
+        }
         StatTile("פגיעות", "${s.hitPct.roundToInt()}%",
             color = if (s.hitPct >= ex.passHitPct) Palette.good else Palette.off, sub = "${s.hits}/${s.expected}")
         StatTile("מכות מיותרות", "${s.extras}", color = if (s.extras == 0) Palette.good else Palette.bad)
@@ -263,6 +267,11 @@ private fun RoundResults(ex: Exercise, o: Outcome) {
                     sub = "ממוצע ${fmtMs(sp.meanMs)}ms (${earlyLate(sp.meanMs)})")
             }
         }
+    }
+    if (s.hits == 0) {
+        Text("לא זוהו מכות. בדוק במסך הכיול שמד הרמה זז ושהעיגול מהבהב כשאתה מכה.",
+            style = MaterialTheme.typography.bodyLarge, color = Palette.off)
+        return
     }
     Text("התפלגות הסטיות", style = MaterialTheme.typography.titleLarge)
     DeviationHistogram(s.histogram)

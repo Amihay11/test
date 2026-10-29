@@ -142,7 +142,7 @@ fun DeviationHistogram(bins: IntArray, modifier: Modifier = Modifier) {
                 drawRect(color, Offset(i * w + 2, h - bh), Size(w - 4, bh))
             }
             drawLine(muted, Offset(size.width / 2, 0f), Offset(size.width / 2, h), strokeWidth = 2f)
-            listOf(0 to "−50ms", half to "0", bins.size - 1 to "+50ms").forEach { (i, label) ->
+            listOf(0 to "$LRM−50ms", half to "0", bins.size - 1 to "$LRM+50ms").forEach { (i, label) ->
                 val t = measurer.measure(label, TextStyle(color = muted, fontSize = 12.sp))
                 val x = (i * w + w / 2 - t.size.width / 2).coerceIn(0f, size.width - t.size.width)
                 drawText(t, topLeft = Offset(x, h + 2))
@@ -206,8 +206,11 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, color:
     }
 }
 
-fun fmtMs(v: Double): String = String.format(java.util.Locale.US, "%+.1f", v)
-fun fmt1(v: Double): String = String.format(java.util.Locale.US, "%.1f", v)
+/** Left-to-right mark: keeps "+3.2ms" from rendering as "3.2ms+" inside Hebrew text. */
+const val LRM = "\u200E"
+
+fun fmtMs(v: Double): String = LRM + String.format(java.util.Locale.US, "%+.1f", v)
+fun fmt1(v: Double): String = LRM + String.format(java.util.Locale.US, "%.1f", v)
 
 /** "מקדים / מאחר / במקום" for a mean deviation. */
 fun earlyLate(meanMs: Double): String = when {
