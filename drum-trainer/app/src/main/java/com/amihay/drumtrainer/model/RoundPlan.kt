@@ -6,9 +6,23 @@ object ClickType {
     const val ACCENT = 1
     const val BROADBAND = 2
     private const val PAD_BASE = 3
+    private const val GUIDE_BASE = 11
 
     /** Synthesized drum sound for [pad] (see DrumKitSounds.h; follows the Pad order). */
     fun pad(pad: Pad) = PAD_BASE + pad.ordinal
+
+    /**
+     * Tonal guide sound for [pad], low to high: kick, snare and toms, hi-hat and ride,
+     * crash (see GuideTones.h). The onset detector filters these out of the microphone.
+     */
+    fun guide(pad: Pad?) = GUIDE_BASE + when (pad) {
+        Pad.KICK -> 0
+        Pad.HIHAT, Pad.RIDE -> 2
+        Pad.CRASH -> 3
+        else -> 1
+    }
+
+    fun isAppSound(type: Int) = type >= PAD_BASE
 }
 
 /** A sound the engine plays at [frame]: a metronome click or a drum. */
@@ -131,6 +145,20 @@ object RoundPlanner {
     /** The app's own drum hits for [notes] (single-pad rudiments are played on the snare). */
     fun drumHits(notes: List<ExpectedNote>): List<Click> =
         notes.map { Click(it.frame.toLong(), ClickType.pad(it.pad ?: Pad.SNARE), noteGain(it)) }
+
+    /**
+     * Playing along: the app plays the whole pattern together with the player, and every
+     * bar is scored. Through the phone speaker it plays guide tones, which the microphone
+     * filters out, so only the player's drums are measured; with wired headphones the
+     * microphone cannot hear it, and it plays real drum sounds. The metronome sounds only
+     * the count-in: the pattern itself keeps the time.
+     */
+    fun forTogether(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, realDrums: Boolean): RoundPlan {
+        val p = forExercise(ex, bpm, bars, startFrame, sampleRate)
+        val countIn = p.clicks.filter { it.frame < p.firstNoteFrame - 1 }
+        val app = if (realDrums) drumHits(p.notes) else p.notes.map { Click(it.frame.toLong(), ClickType.guide(it.pad), noteGain(it)) }
+        return p.copy(clicks = (countIn + app).sortedBy { it.frame })
+    }
 
     /** The exercise played by the app with the metronome, for listening before playing. */
     fun preview(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int): RoundPlan {

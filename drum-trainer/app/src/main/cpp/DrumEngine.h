@@ -18,9 +18,10 @@ enum ClickType : int {
     kClickAccent = 1,
     kClickBroadband = 2,  // used for loopback latency calibration (not notched)
     kPadSoundBase = 3,    // kPadSoundBase + Pad.ordinal: drum sounds for playing patterns
+    kGuideSoundBase = 11, // + 0..3: tonal guide sounds the detector ignores (GuideTones.h)
 };
 
-constexpr int kNumSounds = kPadSoundBase + 8;
+constexpr int kNumSounds = kGuideSoundBase + 4;
 
 struct ScheduledClick {
     int64_t frame;  // output-stream frame index

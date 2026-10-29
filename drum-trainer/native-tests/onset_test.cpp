@@ -8,6 +8,7 @@
 #include <random>
 #include <vector>
 
+#include "../app/src/main/cpp/GuideTones.h"
 #include "../app/src/main/cpp/OnsetDetector.h"
 
 namespace {
@@ -167,6 +168,72 @@ bool runClickOnly() {
     return count == 0;
 }
 
+// Playing along with the app through the phone speaker: the app sounds the groove
+// with guide tones exactly on the grid (often louder than the drums at the mic) while
+// the player hits the drums with human jitter. Only the player's hits may be detected.
+bool runPlayAlong(float guideAmp, float drumAmp) {
+    std::mt19937 rng(99);
+    std::normal_distribution<float> jitter(0.0f, 8.0f);
+    std::normal_distribution<float> noise(0.0f, 0.0018f);
+    std::vector<float> buf(kSr * 16, 0.0f);
+    std::vector<std::vector<float>> tones;
+    for (double f : guide::kFreqs) tones.push_back(guide::tone(kSr, f));
+
+    std::vector<Hit> truth;
+    double step = kSr * 60.0 / 100 / 2;  // 8ths at 100 BPM
+    int i = 0;
+    for (double t = kSr / 2; t < buf.size() - kSr / 2; t += step, ++i) {
+        // Rock beat guide: hi-hat every 8th, kick on 1 and 3, snare on 2 and 4.
+        std::vector<int> parts = {2};
+        if (i % 4 == 0) parts.push_back(0);
+        if (i % 4 == 2) parts.push_back(1);
+        for (int p : parts) {
+            const auto &tone = tones[p];
+            for (size_t k = 0; k < tone.size() && t + k < buf.size(); ++k) {
+                buf[static_cast<size_t>(t) + k] += guideAmp / 0.5f * tone[k];
+            }
+        }
+        int64_t at = static_cast<int64_t>(t + jitter(rng) * kSr / 1000.0);
+        addDrum(buf, at, drumAmp, rng, i % 4 == 0);
+        truth.push_back({at, drumAmp});
+    }
+    for (auto &s : buf) s += noise(rng);
+
+    OnsetDetector det(kSr);
+    det.setSensitivity(0.6f);
+    std::vector<OnsetEvent> found;
+    det.process(buf.data(), static_cast<int>(buf.size()), 0, [&](const OnsetEvent &e) { found.push_back(e); });
+    Result r = evaluate(truth, found);
+    double recall = static_cast<double>(r.truePos) / truth.size();
+    bool ok = recall >= 0.98 && r.falsePos <= 1 && std::fabs(r.meanErrMs) < 1.0 && r.stdErrMs < 1.0;
+    std::printf("play-along, guide %.1f / drums %.1f    hits=%3zu recall=%.3f fp=%2d  err mean=%+.2fms std=%.2fms  %s\n",
+                guideAmp, drumAmp, truth.size(), recall, r.falsePos, r.meanErrMs, r.stdErrMs, ok ? "OK" : "FAIL");
+    return ok;
+}
+
+bool runGuideOnly() {
+    std::vector<float> buf(kSr * 8, 0.0f);
+    std::vector<std::vector<float>> tones;
+    for (double f : guide::kFreqs) tones.push_back(guide::tone(kSr, f));
+    int i = 0;
+    for (size_t t = kSr / 2; t < buf.size() - kSr / 2; t += kSr / 8, ++i) {
+        // All four tones, alone and stacked, at full level.
+        for (int p = 0; p < guide::kNumTones; ++p) {
+            if (i % 5 != p && i % 5 != 4) continue;
+            for (size_t k = 0; k < tones[p].size(); ++k) buf[t + k] += 1.6f * tones[p][k];
+        }
+    }
+    std::mt19937 rng(5);
+    std::normal_distribution<float> noise(0.0f, 0.0018f);
+    for (auto &s : buf) s += noise(rng);
+    OnsetDetector det(kSr);
+    det.setSensitivity(0.6f);
+    int count = 0;
+    det.process(buf.data(), static_cast<int>(buf.size()), 0, [&](const OnsetEvent &) { ++count; });
+    std::printf("%-34s detections=%d  %s\n", "guide tones only (0.8 peak)", count, count == 0 ? "OK" : "FAIL");
+    return count == 0;
+}
+
 }  // namespace
 
 int main() {
@@ -178,6 +245,9 @@ int main() {
     ok &= runScenario("16ths 100bpm, noisy room", 100, 4, 0.3f, false, -40, true, 0.97f, 3);
     ok &= runScenario("8ths 100bpm, notch off, no click", 100, 2, 0.0f, false, -55, false, 0.99f, 0);
     ok &= runClickOnly();
+    ok &= runGuideOnly();
+    ok &= runPlayAlong(0.8f, 0.5f);
+    ok &= runPlayAlong(0.4f, 0.15f);
     std::printf(ok ? "ALL PASSED\n" : "SOME FAILED\n");
     return ok ? 0 : 1;
 }

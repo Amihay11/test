@@ -27,9 +27,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.amihay.drumtrainer.audio.AudioRoute
+import com.amihay.drumtrainer.audio.currentAudioRoute
 import com.amihay.drumtrainer.data.HitEntity
 import com.amihay.drumtrainer.data.ProgressEntity
 import com.amihay.drumtrainer.data.RunEntity
@@ -51,6 +54,16 @@ import kotlin.math.roundToInt
 
 private enum class Phase { SETUP, PREVIEW, RUNNING, RATING, RESULTS }
 
+/** How the app takes part in a round. */
+private enum class PlayMode(val label: String, val tag: String) {
+    /** Only the metronome. */
+    NORMAL("רגיל", ""),
+    /** The app plays the pattern at the same time as the player. */
+    TOGETHER("ביחד", "-together"),
+    /** The app plays a cycle, then the player plays it back. */
+    ECHO("חזור אחריי", "-echo"),
+}
+
 private data class Outcome(
     val stats: RoundStats,
     val passed: Boolean,
@@ -70,8 +83,9 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     var plan by remember { mutableStateOf<RoundPlan?>(null) }
     var match by remember { mutableStateOf<MatchResult?>(null) }
     var notes by remember { mutableStateOf<List<ExpectedNote>>(emptyList()) }
-    // "Repeat after me": the app plays a cycle, then the player plays it back.
-    var echo by remember { mutableStateOf(false) }
+    var mode by remember { mutableStateOf(PlayMode.NORMAL) }
+    val context = LocalContext.current
+    var route by remember { mutableStateOf(currentAudioRoute(context)) }
     // Judge the drums only when every drum in the exercise has been learned.
     val padAware = Scoring.padAware(ex, app.classifier.pads)
     var outcome by remember { mutableStateOf<Outcome?>(null) }
@@ -95,11 +109,12 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     fun startRound() {
         val start = app.engine.scheduleStartFrame()
         val sr = app.engine.sampleRate
-        val p = if (echo) {
-            val reps = maxOf(1, (app.settings.barsPerRound + ex.cycleBars - 1) / ex.cycleBars)
-            RoundPlanner.forCallResponse(ex, bpm, reps, start, sr)
-        } else {
-            RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr)
+        route = currentAudioRoute(context)
+        val p = when (mode) {
+            PlayMode.NORMAL -> RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr)
+            PlayMode.TOGETHER -> RoundPlanner.forTogether(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr,
+                realDrums = route == AudioRoute.WIRED)
+            PlayMode.ECHO -> RoundPlanner.forCallResponse(ex, bpm, echoReps(ex, app.settings.barsPerRound), start, sr)
         }
         val aware = padAware
         plan = p
@@ -115,6 +130,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 
     fun finish(rating: Int?) {
         val p = plan ?: return
+        val roundMode = mode
         val m = match ?: return
         val stats = Stats.compute(m, ex.subdivision)
         val passed = Stats.passes(stats, ex.passStdMs, ex.passHitPct)
@@ -124,7 +140,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
             val (after, tempoUp) = SpeedTrainer.afterRound(before, bpm, passed)
             val runId = app.dao.insertRun(
                 RunEntity(
-                    exerciseId = ex.id, mode = ex.kind.name.lowercase() + if (p.listenBars.isNotEmpty()) "-echo" else "", bpm = bpm, startedAt = System.currentTimeMillis(),
+                    exerciseId = ex.id, mode = ex.kind.name.lowercase() + roundMode.tag, bpm = bpm, startedAt = System.currentTimeMillis(),
                     bars = p.bars, expected = stats.expected, hits = stats.hits, misses = stats.misses,
                     extras = stats.extras, meanMs = stats.meanMs, stdMs = stats.stdMs, hitPct = stats.hitPct,
                     accentDb = stats.accentDb, selfRating = rating, passed = passed,
@@ -184,15 +200,30 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("מצב:", style = MaterialTheme.typography.bodyLarge)
-                    listOf(false to "רגיל", true to "חזור אחריי").forEach { (value, label) ->
-                        if (echo == value) Button(onClick = {}) { Text(label) }
-                        else FilledTonalButton(onClick = { echo = value }) { Text(label) }
+                    PlayMode.entries.forEach { m ->
+                        if (mode == m) Button(onClick = {}) { Text(m.label) }
+                        else FilledTonalButton(onClick = {
+                            mode = m
+                            route = currentAudioRoute(context)
+                        }) { Text(m.label) }
                     }
                 }
-                if (echo) {
-                    Text(
+                when (mode) {
+                    PlayMode.NORMAL -> {}
+                    PlayMode.ECHO -> Text(
                         "האפליקציה מנגנת ${if (ex.cycleBars == 1) "תיבה" else "${ex.cycleBars} תיבות"}, ואז אתה חוזר על אותו דבר. נמדדים רק התורות שלך.",
                         style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
+                    )
+                    PlayMode.TOGETHER -> Text(
+                        when (route) {
+                            AudioRoute.WIRED -> "האפליקציה מנגנת את התופים איתך באוזניות. המיקרופון שומע רק אותך."
+                            AudioRoute.SPEAKER -> "האפליקציה מנגנת איתך צלילי הנחיה (צלילים מכוונים במקום תופים), " +
+                                "שהמיקרופון מסנן – כך נמדדת רק הנגינה שלך. עם אוזניות חוטיות תשמע תופים."
+                            AudioRoute.BLUETOOTH -> "אוזניות בלוטות' מאחרות את הצליל בעשרות עד מאות מילישניות, " +
+                                "כך שתנגן אחרי האפליקציה. עדיף אוזניות חוטיות או רמקול הטלפון."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (route == AudioRoute.BLUETOOTH) Palette.off else Palette.muted,
                     )
                 }
                 Text(
@@ -200,11 +231,8 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                 )
                 Button(onClick = ::startRound, modifier = Modifier.fillMaxWidth()) {
-                    val bars = if (echo) {
-                        maxOf(1, (app.settings.barsPerRound + ex.cycleBars - 1) / ex.cycleBars) * ex.cycleBars
-                    } else {
-                        ex.roundBars(app.settings.barsPerRound)
-                    }
+                    val echo = mode == PlayMode.ECHO
+                    val bars = if (echo) echoReps(ex, app.settings.barsPerRound) * ex.cycleBars else ex.roundBars(app.settings.barsPerRound)
                     Text("התחל סבב ($bars תיבות${if (echo) " שלך" else ""})", style = MaterialTheme.typography.titleLarge)
                 }
             }
@@ -300,6 +328,9 @@ private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<Exp
         StatTile("מכות מיותרות", "${live.extras.size}", color = if (live.extras.isEmpty()) Palette.muted else Palette.bad)
     }
 }
+
+/** "Repeat after me" turns per round: about as many of the player's bars as a normal round. */
+private fun echoReps(ex: Exercise, barsPerRound: Int) = maxOf(1, (barsPerRound + ex.cycleBars - 1) / ex.cycleBars)
 
 /**
  * The bars of one cycle, with runs of identical bars shown once ("Bars 2–3") so a

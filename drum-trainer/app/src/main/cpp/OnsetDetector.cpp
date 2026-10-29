@@ -23,9 +23,11 @@ OnsetDetector::OnsetDetector(int sampleRate)
 
     const double clickFreqs[] = {kClickFreqNormal, kClickFreqAccent,
                                  2 * kClickFreqNormal, 2 * kClickFreqAccent};
+    // Two notches in series per frequency: one alone lets the attack of a tone through.
     for (double f : clickFreqs) {
         Biquad b;
         b.setNotch(sampleRate, f, 6.0);
+        notches_.push_back(b);
         notches_.push_back(b);
     }
 

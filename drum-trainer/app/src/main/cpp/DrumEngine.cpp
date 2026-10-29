@@ -1,6 +1,7 @@
 #include "DrumEngine.h"
 
 #include "DrumKitSounds.h"
+#include "GuideTones.h"
 
 #include <android/log.h>
 
@@ -158,6 +159,7 @@ void DrumEngine::buildClickSounds() {
 
     auto kit = drumkit::build(sampleRate_);
     for (int p = 0; p < drumkit::kNumPads; ++p) clickSounds_[kPadSoundBase + p] = std::move(kit[p]);
+    for (int g = 0; g < guide::kNumTones; ++g) clickSounds_[kGuideSoundBase + g] = guide::tone(sampleRate_, guide::kFreqs[g]);
 }
 
 void DrumEngine::setClicks(const std::vector<ScheduledClick> &clicks) {

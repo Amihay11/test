@@ -157,3 +157,33 @@ class PlaybackTest {
         assertEquals(0, s.extras)
     }
 }
+
+class TogetherTest {
+    private val sr = 48000
+    private val all = ExerciseParser.parse(File("src/main/assets/exercises/grooves.json").readText())
+
+    @Test
+    fun speakerPlayAlongUsesGuideTonesForEveryNote() {
+        val ex = all.first { it.id == "fill_toms_8ths" }
+        val p = RoundPlanner.forTogether(ex, 100, 4, 0, sr, realDrums = false)
+        val app = p.clicks.filter { it.frame >= p.firstNoteFrame - 1 }
+        assertEquals(p.notes.size, app.size)
+        // Only guide tones after the count-in: no metronome, no drum samples.
+        assertTrue(app.all { it.type >= ClickType.guide(Pad.KICK) })
+        assertEquals(ClickType.guide(Pad.KICK), app.first { it.frame.toDouble() == p.notes.first { n -> n.pad == Pad.KICK }.frame }.type)
+        assertEquals(setOf(ClickType.guide(Pad.SNARE)), p.notes.filter { it.pad == Pad.TOM_FLOOR }
+            .map { n -> app.first { it.frame == n.frame.toLong() && it.type == ClickType.guide(Pad.SNARE) }.type }.toSet())
+        // The whole round is the player's: nothing is excluded from scoring.
+        assertTrue(p.listenBars.isEmpty())
+        assertEquals(4, p.clicks.count { it.frame < p.firstNoteFrame - 1 })
+    }
+
+    @Test
+    fun headphonePlayAlongUsesDrumSounds() {
+        val ex = all.first { it.id == "rock_1" }
+        val p = RoundPlanner.forTogether(ex, 100, 2, 0, sr, realDrums = true)
+        val app = p.clicks.filter { it.frame >= p.firstNoteFrame - 1 }
+        assertEquals(p.notes.size, app.size)
+        assertTrue(app.all { it.type in ClickType.pad(Pad.KICK) until ClickType.guide(Pad.KICK) })
+    }
+}
