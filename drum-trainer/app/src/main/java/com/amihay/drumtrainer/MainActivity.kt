@@ -53,6 +53,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         app = AppState(applicationContext)
+        // Open an exercise directly, e.g. `adb shell am start ... --es exercise rock_1`.
+        intent.getStringExtra("exercise")?.let { id ->
+            if (app.exercises.any { it.id == id }) app.screen = Screen.Practice(id)
+        }
         hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         if (!hasMic) askMic.launch(Manifest.permission.RECORD_AUDIO)

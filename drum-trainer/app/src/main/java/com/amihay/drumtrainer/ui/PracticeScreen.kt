@@ -151,7 +151,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
         Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(ex.nameHe, style = MaterialTheme.typography.headlineMedium)
                 Text(ex.name, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
@@ -170,7 +170,10 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                     Banner("לא נלמדו: $missing. בסבב הזה נמדד רק התזמון – כדי לבדוק גם את התופים, למד אותם ב'ערכת תופים'.",
                         Palette.off) { app.screen = Screen.Kit }
                 }
-                for (b in 0 until ex.cycleBars) PatternView(app, ex, b, emptyMap(), null)
+                for ((bars, label) in distinctBars(ex)) {
+                    if (label != null) Text(label, style = MaterialTheme.typography.titleMedium, color = Palette.muted)
+                    PatternView(app, ex, bars.first, emptyMap(), null)
+                }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ViewToggle(app)
                     FilledTonalButton(onClick = ::startPreview) { Text("🔊 השמע") }
@@ -296,6 +299,25 @@ private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<Exp
         }
         StatTile("מכות מיותרות", "${live.extras.size}", color = if (live.extras.isEmpty()) Palette.muted else Palette.bad)
     }
+}
+
+/**
+ * The bars of one cycle, with runs of identical bars shown once ("Bars 2–3") so a
+ * groove-plus-fill loop does not repeat the same groove three times.
+ */
+private fun distinctBars(ex: Exercise): List<Pair<IntRange, String?>> {
+    if (ex.cycleBars == 1) return listOf(0..0 to null)
+    fun content(bar: Int) = (0 until ex.stepsPerBar).map { ex.strokesAt(bar * ex.stepsPerBar + it) }
+    val out = ArrayList<Pair<IntRange, String?>>()
+    var start = 0
+    for (b in 1..ex.cycleBars) {
+        if (b < ex.cycleBars && content(b) == content(start)) continue
+        val range = start until b
+        val name = if (range.first == range.last) "תיבה ${range.first + 1}" else "תיבות $LRM${range.first + 1}–${range.last + 1}"
+        out += range to name + if (ex.isFillBar(range.first)) " · מילוי" else ""
+        start = b
+    }
+    return out
 }
 
 /** Grid row of a note: its drum, its hand (rudiments), or every row (timing-only notes). */

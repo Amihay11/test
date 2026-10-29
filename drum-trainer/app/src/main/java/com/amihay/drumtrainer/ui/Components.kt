@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +36,12 @@ import com.amihay.drumtrainer.model.Stats
 import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.roundToInt
+
+/**
+ * Measures canvas text left-to-right. The measurer otherwise takes the app's RTL
+ * direction, which mirrors characters such as ">" into "<".
+ */
+fun TextMeasurer.ltr(text: String, style: TextStyle) = measure(text, style, layoutDirection = LayoutDirection.Ltr)
 
 /** Live state of one grid cell. */
 enum class StepState { PENDING, GOOD, OFF, MISS, WRONG }
@@ -76,7 +83,7 @@ fun DeviationHistogram(bins: IntArray, modifier: Modifier = Modifier) {
             }
             drawLine(muted, Offset(size.width / 2, 0f), Offset(size.width / 2, h), strokeWidth = 2f)
             listOf(0 to "$LRM−50ms", half to "0", bins.size - 1 to "$LRM+50ms").forEach { (i, label) ->
-                val t = measurer.measure(label, TextStyle(color = muted, fontSize = 12.sp))
+                val t = measurer.ltr(label, TextStyle(color = muted, fontSize = 12.sp))
                 val x = (i * w + w / 2 - t.size.width / 2).coerceIn(0f, size.width - t.size.width)
                 drawText(t, topLeft = Offset(x, h + 2))
             }

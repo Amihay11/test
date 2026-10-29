@@ -65,7 +65,11 @@ fun ExerciseGrid(
     val steps = exercise.stepsPerBar
     val labelColor = MaterialTheme.colorScheme.onSurface
     val lineColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val rowDp = if (rows.size > 3) 52 else 72
+    val rowDp = when {
+        rows.size > 5 -> 40
+        rows.size > 3 -> 52
+        else -> 72
+    }
     val isFill = exercise.isFillBar(bar)
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -76,14 +80,14 @@ fun ExerciseGrid(
             val rowH = (size.height - top) / rows.size
             if (isFill) {
                 drawRect(Palette.off.copy(alpha = 0.10f), Offset(labelW, top), Size(size.width - labelW, size.height - top))
-                val t = measurer.measure("FILL", TextStyle(color = Palette.off, fontSize = 12.sp, fontWeight = FontWeight.Bold))
+                val t = measurer.ltr("FILL", TextStyle(color = Palette.off, fontSize = 12.sp, fontWeight = FontWeight.Bold))
                 drawText(t, topLeft = Offset(size.width - t.size.width, 0f))
             }
 
             rows.forEachIndexed { r, (key, label) ->
                 val y = top + r * rowH
                 if (label.isNotEmpty()) {
-                    val t = measurer.measure(label, TextStyle(color = lineColor, fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                    val t = measurer.ltr(label, TextStyle(color = lineColor, fontSize = 18.sp, fontWeight = FontWeight.Bold))
                     drawText(t, topLeft = Offset((labelW - t.size.width) / 2, y + (rowH - t.size.height) / 2))
                 }
                 for (s in 0 until steps) {
@@ -98,7 +102,7 @@ fun ExerciseGrid(
                         cornerRadius = CornerRadius(6.dp.toPx()),
                     )
                     if (stroke.accent) {
-                        val t = measurer.measure(">", TextStyle(color = labelColor, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+                        val t = measurer.ltr(">", TextStyle(color = labelColor, fontSize = 16.sp, fontWeight = FontWeight.Bold))
                         drawText(t, topLeft = Offset(x + (cellW - t.size.width) / 2, y + (rowH - t.size.height) / 2))
                     }
                 }
@@ -168,7 +172,7 @@ fun NotationView(
             drawRect(ink, Offset(16.dp.toPx(), y(2)), Size(4.dp.toPx(), gap * 2))
             drawLine(ink, Offset(size.width - 2f, staffTop), Offset(size.width - 2f, staffTop + 4 * gap), 2f)
             if (exercise.isFillBar(bar)) {
-                val t = measurer.measure("FILL", TextStyle(color = Palette.off, fontSize = 12.sp, fontWeight = FontWeight.Bold))
+                val t = measurer.ltr("FILL", TextStyle(color = Palette.off, fontSize = 12.sp, fontWeight = FontWeight.Bold))
                 drawText(t, topLeft = Offset(size.width - t.size.width - 4.dp.toPx(), 0f))
             }
 
@@ -196,7 +200,7 @@ fun NotationView(
                     val nearest = if (down) strokes.minOf { y(staffPos(it.pad)) } else strokes.maxOf { y(staffPos(it.pad)) }
                     drawLine(ink, Offset(headX, nearest), Offset(headX, stemEnd), 2f)
                     if (!down && strokes.any { it.accent }) {
-                        val t = measurer.measure(">", TextStyle(color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+                        val t = measurer.ltr(">", TextStyle(color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold))
                         drawText(t, topLeft = Offset(headX - t.size.width / 2, stemEnd - t.size.height - 2))
                     }
                 }
@@ -216,7 +220,7 @@ fun NotationView(
                     }
                     if (exercise.subdivision == 3 || exercise.subdivision == 6) {
                         val label = exercise.subdivision.toString()
-                        val t = measurer.measure(label, TextStyle(color = muted, fontSize = 11.sp))
+                        val t = measurer.ltr(label, TextStyle(color = muted, fontSize = 11.sp))
                         val cx = (stepX(beat * exercise.subdivision) + stepX(beat * exercise.subdivision + exercise.subdivision - 1)) / 2
                         val ty = if (down) stemEnd + 4 else stemEnd - t.size.height - 14.dp.toPx()
                         drawText(t, topLeft = Offset(cx - t.size.width / 2, ty))
