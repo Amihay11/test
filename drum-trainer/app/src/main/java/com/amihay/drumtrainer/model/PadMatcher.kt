@@ -101,7 +101,9 @@ object Scoring {
     fun match(
         notes: List<ExpectedNote>, onsets: List<Onset>, plan: RoundPlan, padAware: Boolean,
         upToFrame: Double = Double.MAX_VALUE,
-    ): MatchResult =
-        if (padAware) PadMatcher.match(notes, onsets, plan.windowFrames, plan.sampleRate, upToFrame)
-        else Matcher.match(notes, onsets, plan.windowFrames, plan.sampleRate, upToFrame)
+    ): MatchResult {
+        val mine = onsets.filter { plan.isPlayerTime(it.frame) }
+        return if (padAware) PadMatcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
+        else Matcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
+    }
 }

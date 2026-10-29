@@ -49,7 +49,7 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
-private enum class Phase { SETUP, RUNNING, RATING, RESULTS }
+private enum class Phase { SETUP, PREVIEW, RUNNING, RATING, RESULTS }
 
 private data class Outcome(
     val stats: RoundStats,
@@ -70,6 +70,8 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     var plan by remember { mutableStateOf<RoundPlan?>(null) }
     var match by remember { mutableStateOf<MatchResult?>(null) }
     var notes by remember { mutableStateOf<List<ExpectedNote>>(emptyList()) }
+    // "Repeat after me": the app plays a cycle, then the player plays it back.
+    var echo by remember { mutableStateOf(false) }
     // Judge the drums only when every drum in the exercise has been learned.
     val padAware = Scoring.padAware(ex, app.classifier.pads)
     var outcome by remember { mutableStateOf<Outcome?>(null) }
@@ -80,10 +82,25 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     }
     KeepScreenOn()
 
+    fun startPreview() {
+        val p = RoundPlanner.preview(ex, bpm, maxOf(ex.cycleBars, 2), app.engine.scheduleStartFrame(), app.engine.sampleRate)
+        plan = p
+        phase = Phase.PREVIEW
+        job = scope.launch {
+            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs, tailMs = 1200)
+            phase = Phase.SETUP
+        }
+    }
+
     fun startRound() {
-        val p = RoundPlanner.forExercise(
-            ex, bpm, ex.roundBars(app.settings.barsPerRound), app.engine.scheduleStartFrame(), app.engine.sampleRate,
-        )
+        val start = app.engine.scheduleStartFrame()
+        val sr = app.engine.sampleRate
+        val p = if (echo) {
+            val reps = maxOf(1, (app.settings.barsPerRound + ex.cycleBars - 1) / ex.cycleBars)
+            RoundPlanner.forCallResponse(ex, bpm, reps, start, sr)
+        } else {
+            RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr)
+        }
         val aware = padAware
         plan = p
         notes = Scoring.notes(p, aware)
@@ -107,7 +124,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
             val (after, tempoUp) = SpeedTrainer.afterRound(before, bpm, passed)
             val runId = app.dao.insertRun(
                 RunEntity(
-                    exerciseId = ex.id, mode = ex.kind.name.lowercase(), bpm = bpm, startedAt = System.currentTimeMillis(),
+                    exerciseId = ex.id, mode = ex.kind.name.lowercase() + if (p.listenBars.isNotEmpty()) "-echo" else "", bpm = bpm, startedAt = System.currentTimeMillis(),
                     bars = p.bars, expected = stats.expected, hits = stats.hits, misses = stats.misses,
                     extras = stats.extras, meanMs = stats.meanMs, stdMs = stats.stdMs, hitPct = stats.hitPct,
                     accentDb = stats.accentDb, selfRating = rating, passed = passed,
@@ -154,15 +171,51 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                         Palette.off) { app.screen = Screen.Kit }
                 }
                 for (b in 0 until ex.cycleBars) PatternView(app, ex, b, emptyMap(), null)
-                ViewToggle(app)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ViewToggle(app)
+                    FilledTonalButton(onClick = ::startPreview) { Text("🔊 השמע") }
+                }
                 BpmStepper(bpm, { bpm = it })
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("מצב:", style = MaterialTheme.typography.bodyLarge)
+                    listOf(false to "רגיל", true to "חזור אחריי").forEach { (value, label) ->
+                        if (echo == value) Button(onClick = {}) { Text(label) }
+                        else FilledTonalButton(onClick = { echo = value }) { Text(label) }
+                    }
+                }
+                if (echo) {
+                    Text(
+                        "האפליקציה מנגנת ${if (ex.cycleBars == 1) "תיבה" else "${ex.cycleBars} תיבות"}, ואז אתה חוזר על אותו דבר. נמדדים רק התורות שלך.",
+                        style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
+                    )
+                }
                 Text(
                     "יעד: ${ex.targetBpm} BPM · מעבר: סטיית תקן עד ${ex.passStdMs.roundToInt()}ms ו-${ex.passHitPct.roundToInt()}% פגיעות",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                 )
                 Button(onClick = ::startRound, modifier = Modifier.fillMaxWidth()) {
-                    Text("התחל סבב (${ex.roundBars(app.settings.barsPerRound)} תיבות)", style = MaterialTheme.typography.titleLarge)
+                    val bars = if (echo) {
+                        maxOf(1, (app.settings.barsPerRound + ex.cycleBars - 1) / ex.cycleBars) * ex.cycleBars
+                    } else {
+                        ex.roundBars(app.settings.barsPerRound)
+                    }
+                    Text("התחל סבב ($bars תיבות${if (echo) " שלך" else ""})", style = MaterialTheme.typography.titleLarge)
                 }
+            }
+
+            Phase.PREVIEW -> plan?.let { p ->
+                val beat = p.beatAt(runner.playhead)
+                val bar = floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1)
+                Text(if (beat < 0) "ספירה…" else "האפליקציה מנגנת – הקשב", style = MaterialTheme.typography.headlineMedium,
+                    color = Palette.accent)
+                PatternView(app, ex, bar, emptyMap(), if (beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null)
+                FilledTonalButton(onClick = {
+                    job?.cancel()
+                    phase = Phase.SETUP
+                }, modifier = Modifier.fillMaxWidth()) { Text("עצור") }
             }
 
             Phase.RUNNING -> plan?.let { p ->
@@ -212,10 +265,17 @@ private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<Exp
             Text("${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}",
                 style = MaterialTheme.typography.displayLarge)
         } else {
-            Text(
-                "תיבה ${bar + 1} / ${p.bars}" + if (ex.isFillBar(bar)) " · FILL" else "",
-                style = MaterialTheme.typography.headlineMedium,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (p.listenBars.isNotEmpty()) {
+                    val listening = bar in p.listenBars
+                    Text(if (listening) "הקשב" else "תורך", style = MaterialTheme.typography.displayMedium,
+                        color = if (listening) Palette.accent else Palette.good)
+                }
+                Text(
+                    "תיבה ${bar + 1} / ${p.bars}" + if (ex.isFillBar(bar)) " · FILL" else "",
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+            }
         }
     }
     val cursor = if (beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null

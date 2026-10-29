@@ -42,14 +42,17 @@ JNIEXPORT jlong JNICALL JNI_FN(nativeWriteFrame)(JNIEnv *, jobject) {
     return static_cast<jlong>(engine().writeFrame());
 }
 
-JNIEXPORT void JNICALL JNI_FN(nativeSetClicks)(JNIEnv *env, jobject, jlongArray frames, jintArray types) {
+JNIEXPORT void JNICALL JNI_FN(nativeSetClicks)(JNIEnv *env, jobject, jlongArray frames, jintArray types,
+                                               jfloatArray gains) {
     jsize n = env->GetArrayLength(frames);
     std::vector<jlong> f(n);
     std::vector<jint> t(n);
+    std::vector<jfloat> g(n);
     env->GetLongArrayRegion(frames, 0, n, f.data());
     env->GetIntArrayRegion(types, 0, n, t.data());
+    env->GetFloatArrayRegion(gains, 0, n, g.data());
     std::vector<ScheduledClick> clicks(n);
-    for (jsize i = 0; i < n; ++i) clicks[i] = {static_cast<int64_t>(f[i]), static_cast<int>(t[i])};
+    for (jsize i = 0; i < n; ++i) clicks[i] = {static_cast<int64_t>(f[i]), static_cast<int>(t[i]), g[i]};
     engine().setClicks(clicks);
 }
 

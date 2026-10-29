@@ -1,13 +1,18 @@
 package com.amihay.drumtrainer.model
 
-/** Click sound types; must match ClickType in DrumEngine.h. */
+/** Sound types; must match ClickType in DrumEngine.h. */
 object ClickType {
     const val NORMAL = 0
     const val ACCENT = 1
     const val BROADBAND = 2
+    private const val PAD_BASE = 3
+
+    /** Synthesized drum sound for [pad] (see DrumKitSounds.h; follows the Pad order). */
+    fun pad(pad: Pad) = PAD_BASE + pad.ordinal
 }
 
-data class Click(val frame: Long, val type: Int)
+/** A sound the engine plays at [frame]: a metronome click or a drum. */
+data class Click(val frame: Long, val type: Int, val gain: Float = 1f)
 
 data class ExpectedNote(
     val index: Int,
@@ -42,6 +47,8 @@ data class RoundPlan(
     val clicks: List<Click>,
     /** For each bar after the count-in: is the metronome audible? */
     val clickBars: List<Boolean>,
+    /** "Repeat after me": bars the app plays while the player listens (not scored). */
+    val listenBars: Set<Int> = emptySet(),
 ) {
     val firstNoteFrame: Double get() = startFrame + countInBeats * framesPerBeat
     val endFrame: Double get() = firstNoteFrame + bars * beatsPerBar * framesPerBeat
@@ -54,18 +61,37 @@ data class RoundPlan(
 
     /** Position in the round, in beats from the first note (negative during count-in). */
     fun beatAt(frame: Double): Double = (frame - firstNoteFrame) / framesPerBeat
+
+    private val framesPerBar: Double get() = beatsPerBar * framesPerBeat
+
+    /**
+     * Whether a hit at [frame] belongs to the player. In "repeat after me" rounds the
+     * microphone also hears the app's own drums; those hits fall in listen bars and are
+     * dropped. A hit may be up to one window early for a bar, but the first note of the
+     * next listen bar (which the app plays) is never counted.
+     */
+    fun isPlayerTime(frame: Double): Boolean {
+        if (listenBars.isEmpty()) return true
+        return (0 until bars).any { b ->
+            b !in listenBars &&
+                frame >= firstNoteFrame + b * framesPerBar - windowFrames &&
+                frame < firstNoteFrame + (b + 1) * framesPerBar - windowFrames
+        }
+    }
 }
 
 object RoundPlanner {
 
-    fun forExercise(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int): RoundPlan {
+    fun forExercise(
+        ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, endOnLanding: Boolean = true,
+    ): RoundPlan {
         val framesPerBeat = sampleRate * 60.0 / bpm
         val framesPerStep = framesPerBeat / ex.subdivision
         val countIn = ex.beatsPerBar
         val first = startFrame + countIn * framesPerBeat
         val notes = ArrayList<ExpectedNote>()
         // Fill exercises end on the downbeat after the last fill, so every fill has a landing.
-        val endsOnLanding = ex.kind == ExerciseKind.FILL && ex.isFillBar(bars - 1)
+        val endsOnLanding = endOnLanding && ex.kind == ExerciseKind.FILL && ex.isFillBar(bars - 1)
         val lastStep = bars * ex.stepsPerBar + (if (endsOnLanding) 1 else 0)
         for (step in 0 until lastStep) {
             val bar = step / ex.stepsPerBar
@@ -92,6 +118,43 @@ object RoundPlanner {
         return RoundPlan(
             sampleRate, bpm.toDouble(), startFrame, framesPerBeat, framesPerStep, ex.beatsPerBar,
             ex.stepsPerBar, countIn, bars, notes, clicks, clickBars,
+        )
+    }
+
+    /** How hard the app plays a note back: accents loud, ghost notes soft. */
+    private fun noteGain(n: ExpectedNote) = when {
+        n.accent -> 1.0f
+        n.ghost -> 0.25f
+        else -> 0.65f
+    }
+
+    /** The app's own drum hits for [notes] (single-pad rudiments are played on the snare). */
+    fun drumHits(notes: List<ExpectedNote>): List<Click> =
+        notes.map { Click(it.frame.toLong(), ClickType.pad(it.pad ?: Pad.SNARE), noteGain(it)) }
+
+    /** The exercise played by the app with the metronome, for listening before playing. */
+    fun preview(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int): RoundPlan {
+        val p = forExercise(ex, bpm, bars, startFrame, sampleRate)
+        return p.copy(clicks = (p.clicks + drumHits(p.notes)).sortedBy { it.frame })
+    }
+
+    /**
+     * "Repeat after me": the app plays one cycle of the pattern, the player plays it back,
+     * [reps] times. Only the player's bars are scored. Fills have no landing here: the bar
+     * after the player's fill is the app's turn again.
+     */
+    fun forCallResponse(ex: Exercise, bpm: Int, reps: Int, startFrame: Long, sampleRate: Int): RoundPlan {
+        val cycle = ex.cycleBars
+        val bars = reps * 2 * cycle
+        val full = forExercise(ex, bpm, bars, startFrame, sampleRate, endOnLanding = false)
+        val listen = (0 until bars).filter { (it / cycle) % 2 == 0 }.toSet()
+        val appNotes = full.notes.filter { it.bar in listen }
+        val playerNotes = full.notes.filter { it.bar !in listen }
+            .mapIndexed { i, n -> n.copy(index = i, landing = n.landing && (n.bar - 1) !in listen) }
+        return full.copy(
+            notes = playerNotes,
+            clicks = (full.clicks + drumHits(appNotes)).sortedBy { it.frame },
+            listenBars = listen,
         )
     }
 

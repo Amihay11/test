@@ -6,6 +6,7 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/** The order matters: the engine's drum sounds are indexed by it (DrumKitSounds.h). */
 enum class Pad(val id: String, val he: String, val short: String) {
     KICK("kick", "קיק", "K"),
     SNARE("snare", "סנר", "S"),

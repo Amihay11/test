@@ -17,11 +17,15 @@ enum ClickType : int {
     kClickNormal = 0,
     kClickAccent = 1,
     kClickBroadband = 2,  // used for loopback latency calibration (not notched)
+    kPadSoundBase = 3,    // kPadSoundBase + Pad.ordinal: drum sounds for playing patterns
 };
+
+constexpr int kNumSounds = kPadSoundBase + 8;
 
 struct ScheduledClick {
     int64_t frame;  // output-stream frame index
     int type;
+    float gain;     // 1 = normal; accents louder, ghost notes softer
 };
 
 struct AlignedOnset {
@@ -92,9 +96,11 @@ private:
     struct Voice {
         const std::vector<float> *sound = nullptr;
         int64_t startFrame = 0;
+        float gain = 1.0f;
     };
-    Voice voices_[4];
-    std::vector<float> clickSounds_[3];
+    // Enough for 16th notes on several drums while a crash rings out.
+    Voice voices_[24];
+    std::vector<float> clickSounds_[kNumSounds];
 
     std::atomic<int64_t> writeFrame_{0};
     bool firstCallback_ = true;

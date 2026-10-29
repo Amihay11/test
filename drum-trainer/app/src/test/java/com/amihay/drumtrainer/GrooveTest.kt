@@ -1,11 +1,13 @@
 package com.amihay.drumtrainer
 
+import com.amihay.drumtrainer.model.ClickType
 import com.amihay.drumtrainer.model.ExerciseKind
 import com.amihay.drumtrainer.model.ExerciseParser
 import com.amihay.drumtrainer.model.Onset
 import com.amihay.drumtrainer.model.Pad
 import com.amihay.drumtrainer.model.PadMatcher
 import com.amihay.drumtrainer.model.RoundPlanner
+import com.amihay.drumtrainer.model.Scoring
 import com.amihay.drumtrainer.model.Stats
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -104,5 +106,54 @@ class GrooveTest {
         assertEquals(-40.0, s.landing.meanMs, 1e-6)
         assertEquals(0.0, s.groove.meanMs, 1e-6)
         assertFalse(Stats.passes(s, 20.0, 90.0))
+    }
+}
+
+class PlaybackTest {
+    private val sr = 48000
+    private val all = ExerciseParser.parse(File("src/main/assets/exercises/grooves.json").readText())
+
+    @Test
+    fun previewPlaysEveryNoteOnItsDrum() {
+        val ex = all.first { it.id == "rock_5" }
+        val p = RoundPlanner.preview(ex, 90, 2, 0, sr)
+        val drums = p.clicks.filter { it.type >= ClickType.pad(Pad.KICK) }
+        assertEquals(p.notes.size, drums.size)
+        assertEquals(p.notes.count { it.pad == Pad.KICK }, drums.count { it.type == ClickType.pad(Pad.KICK) })
+        // Ghost notes are played softly, accents loudly.
+        val ghostGain = drums.filter { it.type == ClickType.pad(Pad.SNARE) }.minOf { it.gain }
+        val accentGain = drums.filter { it.type == ClickType.pad(Pad.SNARE) }.maxOf { it.gain }
+        assertTrue(ghostGain < 0.5f && accentGain >= 1f)
+        assertEquals(p.clicks.sortedBy { it.frame }, p.clicks)
+    }
+
+    @Test
+    fun callResponseScoresOnlyThePlayersTurns() {
+        val fill = all.first { it.id == "fill_snare_half" }
+        val p = RoundPlanner.forCallResponse(fill, 100, 2, 0, sr)
+        assertEquals(16, p.bars)
+        assertEquals(setOf(0, 1, 2, 3, 8, 9, 10, 11), p.listenBars)
+        assertTrue(p.notes.none { it.bar in p.listenBars })
+        assertEquals(p.notes.indices.toList(), p.notes.map { it.index })
+        // The bar after the player's fill is the app's turn, so no landing is scored.
+        assertTrue(p.notes.none { it.landing })
+        // The app plays drums only in its own bars.
+        val beatsPerBar = p.beatsPerBar * p.framesPerBeat
+        val drumBars = p.clicks.filter { it.type >= ClickType.pad(Pad.KICK) }
+            .map { ((it.frame - p.firstNoteFrame) / beatsPerBar).toInt() }.toSet()
+        assertEquals(p.listenBars, drumBars)
+    }
+
+    @Test
+    fun appsOwnDrumsAreNotScored() {
+        val ex = all.first { it.id == "rock_1" }
+        val p = RoundPlanner.forCallResponse(ex, 100, 2, 0, sr)
+        // The microphone hears the app (its notes) and a perfect player.
+        val appOnsets = RoundPlanner.drumHits(RoundPlanner.forExercise(ex, 100, p.bars, 0, sr).notes)
+            .map { Onset(it.frame.toDouble(), 0.5f) }.distinctBy { it.frame }
+        val m = Scoring.match(Scoring.notes(p, false), appOnsets, p, padAware = false)
+        val s = Stats.compute(m, ex.subdivision)
+        assertEquals(s.expected, s.hits)
+        assertEquals(0, s.extras)
     }
 }

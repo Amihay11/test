@@ -17,7 +17,7 @@ object NativeEngine {
     external fun nativeSampleRate(): Int
     external fun nativePlayheadFrame(): Long
     external fun nativeWriteFrame(): Long
-    external fun nativeSetClicks(frames: LongArray, types: IntArray)
+    external fun nativeSetClicks(frames: LongArray, types: IntArray, gains: FloatArray)
     external fun nativeClearClicks()
     external fun nativeSetSensitivity(s: Float)
     external fun nativeSetNotch(enabled: Boolean)
@@ -58,7 +58,11 @@ class AudioEngine {
 
     fun setClicks(clicks: List<Click>) {
         val sorted = clicks.sortedBy { it.frame }
-        NativeEngine.nativeSetClicks(LongArray(sorted.size) { sorted[it].frame }, IntArray(sorted.size) { sorted[it].type })
+        NativeEngine.nativeSetClicks(
+            LongArray(sorted.size) { sorted[it].frame },
+            IntArray(sorted.size) { sorted[it].type },
+            FloatArray(sorted.size) { sorted[it].gain },
+        )
     }
 
     fun clearClicks() = NativeEngine.nativeClearClicks()

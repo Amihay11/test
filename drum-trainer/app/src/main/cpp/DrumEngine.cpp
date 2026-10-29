@@ -1,5 +1,7 @@
 #include "DrumEngine.h"
 
+#include "DrumKitSounds.h"
+
 #include <android/log.h>
 
 #include <algorithm>
@@ -153,6 +155,9 @@ void DrumEngine::buildClickSounds() {
         burst[i] = static_cast<float>(0.9 * white * std::exp(-t / 0.0008));
     }
     clickSounds_[kClickBroadband] = burst;
+
+    auto kit = drumkit::build(sampleRate_);
+    for (int p = 0; p < drumkit::kNumPads; ++p) clickSounds_[kPadSoundBase + p] = std::move(kit[p]);
 }
 
 void DrumEngine::setClicks(const std::vector<ScheduledClick> &clicks) {
@@ -198,15 +203,20 @@ void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame)
     if (clicksActive_.load(std::memory_order_acquire)) {
         while (nextClick_ < clicks_.size() && clicks_[nextClick_].frame < endFrame) {
             const ScheduledClick &c = clicks_[nextClick_++];
-            const std::vector<float> &sound = clickSounds_[std::clamp(c.type, 0, 2)];
+            const std::vector<float> &sound = clickSounds_[std::clamp(c.type, 0, kNumSounds - 1)];
             if (c.frame + static_cast<int64_t>(sound.size()) <= firstFrame) continue;  // too late
+            // Free voice, or else steal the one that started longest ago.
+            Voice *slot = &voices_[0];
             for (auto &v : voices_) {
                 if (v.sound == nullptr) {
-                    v.sound = &sound;
-                    v.startFrame = c.frame;
+                    slot = &v;
                     break;
                 }
+                if (v.startFrame < slot->startFrame) slot = &v;
             }
+            slot->sound = &sound;
+            slot->startFrame = c.frame;
+            slot->gain = c.gain;
         }
     }
     for (auto &v : voices_) {
@@ -215,9 +225,15 @@ void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame)
         int64_t len = static_cast<int64_t>(s.size());
         for (int32_t i = 0; i < numFrames; ++i) {
             int64_t idx = firstFrame + i - v.startFrame;
-            if (idx >= 0 && idx < len) out[i] += s[idx];
+            if (idx >= 0 && idx < len) out[i] += v.gain * s[idx];
         }
         if (endFrame - v.startFrame >= len) v.sound = nullptr;
+    }
+    // Soft limiter: several drums at once (kick + crash + click) must not clip.
+    for (int32_t i = 0; i < numFrames; ++i) {
+        float x = out[i];
+        float ax = std::fabs(x);
+        if (ax > 0.8f) out[i] = std::copysign(0.8f + 0.2f * std::tanh((ax - 0.8f) / 0.2f), x);
     }
 }
 
