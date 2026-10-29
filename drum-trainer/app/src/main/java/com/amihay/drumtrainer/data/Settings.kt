@@ -27,6 +27,15 @@ class Settings(context: Context) {
     var barsPerRound by mutableStateOf(prefs.getInt("barsPerRound", 4))
         private set
 
+    /** Length of a training session, in minutes. */
+    var sessionMinutes by mutableStateOf(prefs.getInt("sessionMinutes", 45))
+        private set
+
+    fun updateSessionMinutes(m: Int) {
+        sessionMinutes = m
+        prefs.edit().putInt("sessionMinutes", m).apply()
+    }
+
     /** Show patterns in drum notation instead of the step grid. */
     var notation by mutableStateOf(prefs.getBoolean("notation", false))
         private set

@@ -47,6 +47,14 @@ fun HomeScreen(app: AppState) {
         app.engineError?.let { err ->
             item { Banner(err, Palette.bad) }
         }
+        item {
+            Button(onClick = { app.screen = Screen.Session }, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    if (app.activeSession != null) "המשך אימון" else "אימון של היום · ${app.settings.sessionMinutes} דק'",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+        }
         if (!app.settings.isCalibrated) {
             item {
                 Banner("עוד לא כיילת השהיה – בלי כיול כל המכות ייראו מאוחרות. מתחילים בכיול.", Palette.off) {
@@ -57,8 +65,9 @@ fun HomeScreen(app: AppState) {
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { app.screen = Screen.Calibration }) { Text("כיול") }
+                FilledTonalButton(onClick = { app.screen = Screen.Progress }) { Text("התקדמות") }
                 FilledTonalButton(onClick = { app.screen = Screen.Kit }) { Text("ערכת תופים") }
-                FilledTonalButton(onClick = { app.screen = Screen.Gap }) { Text("מטרונום עם חורים") }
+                FilledTonalButton(onClick = { app.screen = Screen.Gap() }) { Text("מטרונום עם חורים") }
                 FilledTonalButton(onClick = { app.screen = Screen.History }) { Text("היסטוריה") }
             }
         }

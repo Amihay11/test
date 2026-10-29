@@ -32,6 +32,10 @@ import androidx.core.content.ContextCompat
 import com.amihay.drumtrainer.ui.AppState
 import com.amihay.drumtrainer.ui.CalibrationScreen
 import com.amihay.drumtrainer.ui.DrumTheme
+import com.amihay.drumtrainer.ui.FreePlayScreen
+import com.amihay.drumtrainer.ui.ProgressScreen
+import com.amihay.drumtrainer.ui.SessionScreen
+import com.amihay.drumtrainer.ui.SessionSummaryScreen
 import com.amihay.drumtrainer.ui.GapScreen
 import com.amihay.drumtrainer.ui.HistoryScreen
 import com.amihay.drumtrainer.ui.HomeScreen
@@ -95,15 +99,25 @@ private fun AppContent(app: AppState) {
             app.engine.restartIfNeeded()
         }
     }
-    BackHandler(enabled = app.screen != Screen.Home) { app.screen = Screen.Home }
+    BackHandler(enabled = app.screen != Screen.Home) {
+        app.screen = when (app.screen) {
+            Screen.Session, is Screen.SessionSummary -> Screen.Home
+            is Screen.Practice, is Screen.Gap, is Screen.FreePlay -> app.home
+            else -> Screen.Home
+        }
+    }
 
     when (val s = app.screen) {
         Screen.Home -> HomeScreen(app)
         Screen.Calibration -> CalibrationScreen(app)
-        Screen.Gap -> GapScreen(app)
+        is Screen.Gap -> GapScreen(app, s.setup, s.bpm)
         Screen.History -> HistoryScreen(app)
         Screen.Kit -> KitScreen(app)
-        is Screen.Practice -> PracticeScreen(app, app.exercise(s.exerciseId))
+        is Screen.Practice -> PracticeScreen(app, app.exercise(s.exerciseId), s.bpm)
+        Screen.Session -> SessionScreen(app)
+        is Screen.SessionSummary -> SessionSummaryScreen(app, s.sessionId)
+        Screen.Progress -> ProgressScreen(app)
+        is Screen.FreePlay -> FreePlayScreen(app, app.exercise(s.exerciseId), s.bpm)
     }
 }
 

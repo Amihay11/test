@@ -13,6 +13,7 @@ import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.amihay.drumtrainer.model.RunRecord
 import kotlinx.coroutines.flow.Flow
 
 /** One round (a "סבב"). */
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.Flow
 data class RunEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val exerciseId: String,
-    /** "rudiment" or "gap". */
+    /** Exercise kind ("rudiment", "groove"…) or "gap", plus "-together" / "-echo". */
     val mode: String,
     val bpm: Int,
     val startedAt: Long,
@@ -38,6 +39,17 @@ data class RunEntity(
     val passed: Boolean,
     /** Mode-specific extras (e.g. gap-metronome tempo), as JSON. */
     val detailsJson: String? = null,
+    /** Training session this round was part of, if any. */
+    val sessionId: Long? = null,
+)
+
+/** A training session (stage 4): a five-part plan played in one sitting. */
+@Entity
+data class SessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val startedAt: Long,
+    val endedAt: Long? = null,
+    val plannedMinutes: Int,
 )
 
 /** One expected note or stray hit within a round. */
@@ -88,6 +100,18 @@ interface TrainingDao {
     @Query("SELECT id, exerciseId, mode, bpm, startedAt, stdMs, meanMs, hitPct, passed, selfRating FROM RunEntity ORDER BY startedAt DESC LIMIT :limit")
     fun recentRuns(limit: Int): Flow<List<RunWithName>>
 
+    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity ORDER BY startedAt")
+    suspend fun runRecords(): List<RunRecord>
+
+    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity ORDER BY startedAt")
+    fun runRecordsFlow(): Flow<List<RunRecord>>
+
+    @Insert
+    suspend fun insertSession(s: SessionEntity): Long
+
+    @Query("UPDATE SessionEntity SET endedAt = :endedAt WHERE id = :id")
+    suspend fun endSession(id: Long, endedAt: Long)
+
     @Query("SELECT * FROM ProgressEntity")
     fun allProgress(): Flow<List<ProgressEntity>>
 
@@ -98,7 +122,11 @@ interface TrainingDao {
     suspend fun saveProgress(p: ProgressEntity)
 }
 
-@Database(entities = [RunEntity::class, HitEntity::class, ProgressEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [RunEntity::class, HitEntity::class, ProgressEntity::class, SessionEntity::class],
+    version = 3,
+    exportSchema = false,
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): TrainingDao
 
@@ -112,9 +140,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Stage 4 adds training sessions. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE RunEntity ADD COLUMN sessionId INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS SessionEntity (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "startedAt INTEGER NOT NULL, endedAt INTEGER, plannedMinutes INTEGER NOT NULL)",
+                )
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "training.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build().also { instance = it }
         }
     }

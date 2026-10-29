@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.amihay.drumtrainer.data.HitEntity
 import com.amihay.drumtrainer.data.RunEntity
 import com.amihay.drumtrainer.model.GapAnalysis
+import com.amihay.drumtrainer.model.GapSetup
 import com.amihay.drumtrainer.model.GapStats
 import com.amihay.drumtrainer.model.MatchResult
 import com.amihay.drumtrainer.model.Matcher
@@ -54,12 +55,14 @@ private val presets = listOf(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun GapScreen(app: AppState) {
+fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
     val scope = rememberCoroutineScope()
     val runner = remember { RoundRunner(app.engine) }
     var phase by remember { mutableStateOf(GapPhase.SETUP) }
-    var bpm by remember { mutableIntStateOf(80) }
-    var preset by remember { mutableStateOf(presets[0]) }
+    var bpm by remember { mutableIntStateOf(initialBpm ?: 80) }
+    var preset by remember {
+        mutableStateOf(presets.firstOrNull { it.on == setup?.onBars && it.off == setup.offBars } ?: presets[0])
+    }
     var stepsPerBeat by remember { mutableIntStateOf(1) }
     var cycles by remember { mutableIntStateOf(4) }
     var plan by remember { mutableStateOf<RoundPlan?>(null) }
@@ -101,8 +104,10 @@ fun GapScreen(app: AppState) {
                     startedAt = System.currentTimeMillis(), bars = p.bars, expected = s.expected, hits = s.hits,
                     misses = s.misses, extras = s.extras, meanMs = s.meanMs, stdMs = s.stdMs, hitPct = s.hitPct,
                     accentDb = null, selfRating = rating, passed = false, detailsJson = details.toString(),
+                    sessionId = app.activeSession?.id,
                 ),
             )
+            app.activeSession?.markPlayed("gap_${preset.on}_${preset.off}")
             app.dao.insertHits(m.notes.map {
                 HitEntity(runId = runId, noteIndex = it.note.index, hand = "-", accent = false,
                     deviationMs = it.deviationMs, strength = it.onset?.strength)
@@ -118,8 +123,8 @@ fun GapScreen(app: AppState) {
             Text("מטרונום עם חורים", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
             OutlinedButton(onClick = {
                 job?.cancel()
-                app.screen = Screen.Home
-            }) { Text("חזרה") }
+                app.screen = app.home
+            }) { Text(if (app.activeSession != null) "לאימון" else "חזרה") }
         }
         Text(
             "הקליק מנגן כמה תיבות ונעלם. המשך לנגן באותו טמפו – כשהקליק חוזר רואים אם החזקת את הזמן.",

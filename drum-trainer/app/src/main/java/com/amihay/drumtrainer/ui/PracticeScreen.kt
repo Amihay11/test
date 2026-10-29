@@ -75,7 +75,7 @@ private data class Outcome(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PracticeScreen(app: AppState, ex: Exercise) {
+fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
     val scope = rememberCoroutineScope()
     val runner = remember { RoundRunner(app.engine) }
     var phase by remember { mutableStateOf(Phase.SETUP) }
@@ -92,7 +92,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     var job by remember { mutableStateOf<Job?>(null) }
 
     LaunchedEffect(ex.id) {
-        app.dao.progress(ex.id)?.let { bpm = it.currentBpm }
+        if (initialBpm != null) bpm = initialBpm else app.dao.progress(ex.id)?.let { bpm = it.currentBpm }
     }
     KeepScreenOn()
 
@@ -144,8 +144,10 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                     bars = p.bars, expected = stats.expected, hits = stats.hits, misses = stats.misses,
                     extras = stats.extras, meanMs = stats.meanMs, stdMs = stats.stdMs, hitPct = stats.hitPct,
                     accentDb = stats.accentDb, selfRating = rating, passed = passed,
+                    sessionId = app.activeSession?.id,
                 ),
             )
+            app.activeSession?.markPlayed(ex.id)
             app.dao.insertHits(
                 m.notes.map {
                     HitEntity(runId = runId, noteIndex = it.note.index, hand = it.note.hand.toString(),
@@ -174,8 +176,8 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
             }
             OutlinedButton(onClick = {
                 job?.cancel()
-                app.screen = Screen.Home
-            }) { Text("חזרה") }
+                app.screen = app.home
+            }) { Text(if (app.activeSession != null) "לאימון" else "חזרה") }
         }
         if (ex.tip.isNotEmpty()) Text(ex.tip, style = MaterialTheme.typography.bodyLarge)
 
@@ -263,6 +265,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
                 RoundResults(ex, o)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = ::startRound) { Text("סבב נוסף ב-$bpm BPM") }
+                    if (app.activeSession != null) FilledTonalButton(onClick = { app.screen = Screen.Session }) { Text("חזרה לאימון") }
                     FilledTonalButton(onClick = { phase = Phase.SETUP }) { Text("הגדרות") }
                 }
             }
