@@ -45,6 +45,8 @@ bool DrumEngine::start() {
     alignHistory_.clear();
     clicksActive_.store(false);
     for (auto &v : voices_) v.sound = nullptr;
+    Trigger stale[64];
+    while (triggers_.pop(stale, 64) > 0) {}
     needsRestart_.store(false);
 
     if (!openStreams()) {
@@ -215,6 +217,27 @@ int64_t DrumEngine::playheadFrame() {
     return writeFrame() - out->getBufferSizeInFrames();
 }
 
+void DrumEngine::startVoice(int type, int64_t frame, float gain) {
+    // Free voice, or else steal the one that started longest ago.
+    Voice *slot = &voices_[0];
+    for (auto &v : voices_) {
+        if (v.sound == nullptr) {
+            slot = &v;
+            break;
+        }
+        if (v.startFrame < slot->startFrame) slot = &v;
+    }
+    slot->sound = &clickSounds_[std::clamp(type, 0, kNumSounds - 1)];
+    slot->startFrame = frame;
+    slot->gain = gain;
+}
+
+void DrumEngine::trigger(int type, float gain) {
+    if (!running_.load()) return;
+    std::lock_guard<std::mutex> lock(triggerMutex_);
+    triggers_.push(Trigger{type, gain});
+}
+
 void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame) {
     int64_t endFrame = firstFrame + numFrames;
     if (clicksActive_.load(std::memory_order_acquire)) {
@@ -222,20 +245,12 @@ void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame)
             const ScheduledClick &c = clicks_[nextClick_++];
             const std::vector<float> &sound = clickSounds_[std::clamp(c.type, 0, kNumSounds - 1)];
             if (c.frame + static_cast<int64_t>(sound.size()) <= firstFrame) continue;  // too late
-            // Free voice, or else steal the one that started longest ago.
-            Voice *slot = &voices_[0];
-            for (auto &v : voices_) {
-                if (v.sound == nullptr) {
-                    slot = &v;
-                    break;
-                }
-                if (v.startFrame < slot->startFrame) slot = &v;
-            }
-            slot->sound = &sound;
-            slot->startFrame = c.frame;
-            slot->gain = c.gain;
+            startVoice(c.type, c.frame, c.gain);
         }
     }
+    Trigger t[16];
+    size_t n = triggers_.pop(t, 16);
+    for (size_t i = 0; i < n; ++i) startVoice(t[i].type, firstFrame, t[i].gain);
     if (dropBacking_.load(std::memory_order_acquire)) {
         for (auto &v : voices_) {
             if (v.sound == &clickSounds_[kBackingSound]) v.sound = nullptr;

@@ -39,6 +39,8 @@ sealed interface Screen {
     data class FreePlay(val exerciseId: String, val bpm: Int) : Screen
     /** Exercise editor; null opens a new exercise. */
     data class Editor(val exerciseId: String? = null) : Screen
+    /** The drum kit on the screen, showing [exerciseId]; "back" leads to [back]. */
+    data class Drums(val exerciseId: String? = null, val back: Screen = Home) : Screen
 }
 
 /** A training session in progress: its plan, the current part, and what was played. */
@@ -114,6 +116,9 @@ class AppState(context: Context) {
     var engineError by mutableStateOf<String?>(null)
 
     fun exercise(id: String) = exercises.first { it.id == id }
+
+    /** Progress is kept apart for practice on the screen and on the drums. */
+    fun progressId(exerciseId: String) = if (settings.touchInput) "touch:$exerciseId" else exerciseId
 
     fun startEngine() {
         if (engine.isRunning) return

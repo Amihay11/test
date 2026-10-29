@@ -72,6 +72,10 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetBacking)(JNIEnv *env, jobject, jintArray 
     engine().setBacking(notes, loopFrames);
 }
 
+JNIEXPORT void JNICALL JNI_FN(nativeTrigger)(JNIEnv *, jobject, jint type, jfloat gain) {
+    engine().trigger(type, gain);
+}
+
 JNIEXPORT void JNICALL JNI_FN(nativeClearClicks)(JNIEnv *, jobject) { engine().clearClicks(); }
 
 JNIEXPORT void JNICALL JNI_FN(nativeSetSensitivity)(JNIEnv *, jobject, jfloat s) {

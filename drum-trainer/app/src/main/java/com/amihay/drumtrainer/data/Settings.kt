@@ -65,6 +65,28 @@ class Settings(context: Context) {
         prefs.edit().putFloat("padOffsetMs", ms.toFloat()).apply()
     }
 
+    /** Practising without drums: hits are taps on the screen instead of sounds. */
+    var touchInput by mutableStateOf(prefs.getBoolean("touchInput", false))
+        private set
+
+    /** Delay of the touch screen (ms), measured by tapping along with the click. */
+    var touchOffsetMs by mutableStateOf(prefs.getFloat("touchOffsetMs", Float.NaN).toDouble())
+        private set
+
+    /** Offset for the current input: the microphone, or the screen. */
+    val inputOffsetMs: Double
+        get() = if (touchInput) touchOffsetMs.takeUnless { it.isNaN() } ?: 0.0 else effectiveOffsetMs
+
+    fun updateTouchInput(on: Boolean) {
+        touchInput = on
+        prefs.edit().putBoolean("touchInput", on).apply()
+    }
+
+    fun updateTouchOffset(ms: Double) {
+        touchOffsetMs = ms
+        prefs.edit().putFloat("touchOffsetMs", ms.toFloat()).apply()
+    }
+
     fun updateNotation(on: Boolean) {
         notation = on
         prefs.edit().putBoolean("notation", on).apply()

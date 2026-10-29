@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
+import com.amihay.drumtrainer.model.TOUCH_TAG
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -47,7 +48,8 @@ fun HistoryScreen(app: AppState) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        val title = if (r.mode == "gap") "מטרונום עם חורים" else names[r.exerciseId] ?: r.exerciseId
+                        val title = (if (r.mode.startsWith("gap")) "מטרונום עם חורים" else names[r.exerciseId] ?: r.exerciseId) +
+                            if (r.mode.endsWith(TOUCH_TAG)) " · במסך" else ""
                         Text(title, style = MaterialTheme.typography.titleMedium)
                         Text(
                             "${dateFmt.format(Date(r.startedAt))} · ${r.bpm} BPM" +

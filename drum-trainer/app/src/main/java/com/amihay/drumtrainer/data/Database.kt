@@ -100,10 +100,12 @@ interface TrainingDao {
     @Query("SELECT id, exerciseId, mode, bpm, startedAt, stdMs, meanMs, hitPct, passed, selfRating FROM RunEntity ORDER BY startedAt DESC LIMIT :limit")
     fun recentRuns(limit: Int): Flow<List<RunWithName>>
 
-    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity ORDER BY startedAt")
+    // Rounds tapped on the screen (mode ending in TOUCH_TAG) do not count towards
+    // mastery and the training plan, which are about playing the drums.
+    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity WHERE mode NOT LIKE '%-touch' ORDER BY startedAt")
     suspend fun runRecords(): List<RunRecord>
 
-    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity ORDER BY startedAt")
+    @Query("SELECT exerciseId, bpm, passed, startedAt, sessionId, stdMs FROM RunEntity WHERE mode NOT LIKE '%-touch' ORDER BY startedAt")
     fun runRecordsFlow(): Flow<List<RunRecord>>
 
     @Insert

@@ -25,11 +25,17 @@ object ClickType {
     /** The free-play backing loop (see AudioEngine.setBacking). */
     const val BACKING = 15
 
+    /** The drum a [pad] sound type plays, or null for any other sound. */
+    fun padOf(type: Int): Pad? = Pad.entries.getOrNull(type - PAD_BASE)?.takeIf { type < GUIDE_BASE }
+
     fun isAppSound(type: Int) = type >= PAD_BASE
 }
 
-/** A sound the engine plays at [frame]: a metronome click or a drum. */
-data class Click(val frame: Long, val type: Int, val gain: Float = 1f)
+/**
+ * A sound the engine plays at [frame]: a metronome click or a drum. [hand] is the hand
+ * of a stroke the app plays (to light it on the screen); the engine ignores it.
+ */
+data class Click(val frame: Long, val type: Int, val gain: Float = 1f, val hand: Char? = null)
 
 data class ExpectedNote(
     val index: Int,
@@ -157,7 +163,7 @@ object RoundPlanner {
 
     /** The app's own drum hits for [notes] (single-pad rudiments are played on the snare). */
     fun drumHits(notes: List<ExpectedNote>): List<Click> =
-        notes.map { Click(it.frame.toLong(), ClickType.pad(it.pad ?: Pad.SNARE), noteGain(it)) }
+        notes.map { Click(it.frame.toLong(), ClickType.pad(it.pad ?: Pad.SNARE), noteGain(it), it.hand) }
 
     /**
      * Playing along: the app plays the whole pattern together with the player, and every

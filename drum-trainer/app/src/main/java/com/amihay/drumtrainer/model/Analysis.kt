@@ -7,12 +7,14 @@ import kotlin.math.sqrt
 /**
  * A detected hit, already corrected for latency and expressed on the output clock.
  * [pads] is what the classifier heard (empty = not recognised, null = not classified).
+ * A tap on the screen knows its drum or [hand] exactly.
  */
 data class Onset(
     val frame: Double,
     val strength: Float,
     val features: HitFeatures? = null,
     val pads: List<Pad>? = null,
+    val hand: Char? = null,
 )
 
 data class NoteResult(val note: ExpectedNote, val onset: Onset?, val deviationMs: Double?) {

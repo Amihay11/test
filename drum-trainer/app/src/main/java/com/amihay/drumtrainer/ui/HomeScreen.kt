@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -57,7 +58,27 @@ fun HomeScreen(app: AppState) {
                 )
             }
         }
-        if (!app.settings.isCalibrated) {
+        item {
+            Row(
+                Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    .clickable { app.settings.updateTouchInput(!app.settings.touchInput) }.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("אימון בלי תופים", style = MaterialTheme.typography.titleLarge)
+                    Text("מקישים על המסך במקום לנגן – בשתי ידיים, או על מערכת מצוירת.",
+                        style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+                }
+                Switch(checked = app.settings.touchInput, onCheckedChange = { app.settings.updateTouchInput(it) })
+            }
+        }
+        if (app.settings.touchInput && app.settings.touchOffsetMs.isNaN()) {
+            item {
+                Banner("עוד לא כיילת את מסך המגע – בלי כיול ההקשות ייראו מאוחרות. הכיול בתחתית מסך הכיול.", Palette.off) {
+                    app.screen = Screen.Calibration
+                }
+            }
+        } else if (!app.settings.touchInput && !app.settings.isCalibrated) {
             item {
                 Banner("עוד לא כיילת השהיה – בלי כיול כל המכות ייראו מאוחרות. מתחילים בכיול.", Palette.off) {
                     app.screen = Screen.Calibration
@@ -68,6 +89,7 @@ fun HomeScreen(app: AppState) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { app.screen = Screen.Calibration }) { Text("כיול") }
                 FilledTonalButton(onClick = { app.screen = Screen.Progress }) { Text("התקדמות") }
+                FilledTonalButton(onClick = { app.screen = Screen.Drums() }) { Text("🥁 תופים על המסך") }
                 FilledTonalButton(onClick = { app.screen = Screen.Kit }) { Text("ערכת תופים") }
                 FilledTonalButton(onClick = { app.screen = Screen.Gap() }) { Text("מטרונום עם חורים") }
                 FilledTonalButton(onClick = { app.screen = Screen.History }) { Text("היסטוריה") }
@@ -101,12 +123,12 @@ fun HomeScreen(app: AppState) {
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
             }
         }
-        items(app.customExercises, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[ex.id]) }
+        items(app.customExercises, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[app.progressId(ex.id)]) }
         for ((title, list) in exerciseSections(app.exercises.filter { !it.isCustom })) {
             item(key = "title-$title") {
                 Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp))
             }
-            items(list, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[ex.id]) }
+            items(list, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[app.progressId(ex.id)]) }
         }
         item { Spacer(Modifier.padding(12.dp)) }
     }

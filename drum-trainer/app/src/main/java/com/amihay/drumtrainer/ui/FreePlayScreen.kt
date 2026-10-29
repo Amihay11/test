@@ -67,9 +67,10 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
         val p = base.copy(clicks = countIn + loops)
         plan = p
         result = null
+        runner.touchInput = app.settings.touchInput
         job = scope.launch {
             try {
-                runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs)
+                runner.run(p.clicks, p.endFrame, app.settings.inputOffsetMs)
             } finally {
                 result = FreePlayStats.summarize(runner.onsets.toList(), p)
                 plan = null
@@ -107,6 +108,7 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
                 style = MaterialTheme.typography.displayMedium,
             )
             Text("${runner.onsets.size} מכות", style = MaterialTheme.typography.titleLarge, color = Palette.muted)
+            if (runner.touchInput) TouchInput(app, runner, kit = ex.usesPads)
             FilledTonalButton(onClick = { job?.cancel() }, modifier = Modifier.fillMaxWidth()) { Text("סיום") }
             return@Column
         }

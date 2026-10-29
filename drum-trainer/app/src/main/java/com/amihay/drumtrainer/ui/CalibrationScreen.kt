@@ -40,7 +40,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.floor
 
-private enum class CalPhase { IDLE, LOOPBACK, PAD }
+private enum class CalPhase { IDLE, LOOPBACK, PAD, TOUCH }
 
 private const val PAD_BPM = 90
 private const val PAD_COUNT_IN = 4
@@ -121,6 +121,32 @@ fun CalibrationScreen(app: AppState) {
         phase = CalPhase.IDLE
     }
 
+    fun runTouch() = scope.launch {
+        phase = CalPhase.TOUCH
+        message = null
+        val sr = app.engine.sampleRate
+        val beat = sr * 60.0 / PAD_BPM
+        val start = app.engine.scheduleStartFrame()
+        padStart = start
+        padBeatFrames = beat
+        val clicks = RoundPlanner.calibrationClicks(start, beat, PAD_COUNT_IN + PAD_BEATS, ClickType.NORMAL)
+            .mapIndexed { i, c -> if (i % 4 == 0) c.copy(type = ClickType.ACCENT) else c }
+        runner.touchInput = true
+        try {
+            runner.run(clicks, clicks.last().frame.toDouble(), offsetMs = 0.0)
+        } finally {
+            runner.touchInput = false
+        }
+        val r = CalibrationMath.medianDelay(clicks.drop(PAD_COUNT_IN).map { it.frame.toDouble() }, runner.onsets, -100.0, 400.0, sr)
+        message = if (r == null) {
+            "לא נקלטו מספיק הקשות. הקש על הפד יחד עם כל קליק."
+        } else {
+            app.settings.updateTouchOffset(r.medianMs)
+            "השהיית המסך: ${fmt1(r.medianMs)}ms (${r.matched}/$PAD_BEATS הקשות, פיזור ${fmt1(r.spreadMs)}ms). נשמר."
+        }
+        phase = CalPhase.IDLE
+    }
+
     Column(
         Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -197,6 +223,33 @@ fun CalibrationScreen(app: AppState) {
             }
             Button(onClick = { runPad() }, enabled = phase == CalPhase.IDLE) {
                 Text(if (phase == CalPhase.PAD) "מקשיב…" else "התחל")
+            }
+        }
+
+        Section("אימון בלי תופים · השהיית המסך") {
+            Text(
+                "מסך מגע מדווח על הקשה באיחור של כמה עשרות מילישניות. אחרי ספירה של 4, הקש $PAD_BEATS רבעים " +
+                    "על אחד הפדים יחד עם הקליק, והאפליקציה תקזז את האיחור הזה.",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                "השהיית המסך: " + if (app.settings.touchOffsetMs.isNaN()) "עוד לא" else "${fmt1(app.settings.touchOffsetMs)}ms",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (phase == CalPhase.TOUCH) {
+                val beatIdx = floor((runner.playhead - padStart) / padBeatFrames).toInt()
+                Text(
+                    when {
+                        beatIdx < 0 -> "…"
+                        beatIdx < PAD_COUNT_IN -> "${beatIdx + 1}"
+                        else -> "הקש! ${(beatIdx - PAD_COUNT_IN + 1).coerceAtMost(PAD_BEATS)} / $PAD_BEATS"
+                    },
+                    style = MaterialTheme.typography.displayMedium,
+                )
+                HandPads(app, onTap = { hand, t -> runner.tap(t, hand = hand) })
+            }
+            Button(onClick = { runTouch() }, enabled = phase == CalPhase.IDLE) {
+                Text(if (phase == CalPhase.TOUCH) "מקשיב…" else "התחל")
             }
         }
 

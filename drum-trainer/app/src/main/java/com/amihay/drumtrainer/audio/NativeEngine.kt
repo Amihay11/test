@@ -1,5 +1,6 @@
 package com.amihay.drumtrainer.audio
 
+import android.os.SystemClock
 import com.amihay.drumtrainer.model.BackingLoop
 import com.amihay.drumtrainer.model.Click
 import com.amihay.drumtrainer.model.HitFeatures
@@ -20,6 +21,7 @@ object NativeEngine {
     external fun nativeWriteFrame(): Long
     external fun nativeSetClicks(frames: LongArray, types: IntArray, gains: FloatArray)
     external fun nativeClearClicks()
+    external fun nativeTrigger(type: Int, gain: Float)
     external fun nativeSetBacking(
         starts: IntArray, lengths: IntArray, midis: IntArray, gains: FloatArray, instruments: IntArray, loopFrames: Int,
     )
@@ -70,6 +72,16 @@ class AudioEngine {
     }
 
     fun clearClicks() = NativeEngine.nativeClearClicks()
+
+    /** Plays a sound right away (a tap on the on-screen drums). */
+    fun trigger(type: Int, gain: Float = 0.8f) = NativeEngine.nativeTrigger(type, gain)
+
+    /**
+     * The output frame that was audible at [uptimeMs] (a touch event's time, on the
+     * SystemClock.uptimeMillis clock), so a tap can be compared with the clicks.
+     */
+    fun frameAtUptime(uptimeMs: Long): Double =
+        playheadFrame() - (SystemClock.uptimeMillis() - uptimeMs) * sampleRate / 1000.0
 
     /** Renders a backing loop; schedule it with [ClickType.BACKING] clicks at each loop start. */
     fun setBacking(loop: BackingLoop) {

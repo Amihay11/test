@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import com.amihay.drumtrainer.ui.AppState
 import com.amihay.drumtrainer.ui.CalibrationScreen
 import com.amihay.drumtrainer.ui.DrumTheme
+import com.amihay.drumtrainer.ui.DrumsScreen
 import com.amihay.drumtrainer.ui.EditorScreen
 import com.amihay.drumtrainer.ui.FreePlayScreen
 import com.amihay.drumtrainer.ui.ProgressScreen
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
             if (app.exercises.any { it.id == id }) app.screen = Screen.Practice(id)
         }
         if (intent.getBooleanExtra("editor", false)) app.screen = Screen.Editor()
+        intent.getStringExtra("drums")?.let { id -> app.screen = Screen.Drums(id.takeIf { app.exercises.any { e -> e.id == it } }) }
         hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         if (!hasMic) askMic.launch(Manifest.permission.RECORD_AUDIO)
@@ -107,6 +109,7 @@ private fun AppContent(app: AppState) {
             Screen.Session, is Screen.SessionSummary -> Screen.Home
             is Screen.Practice, is Screen.Gap, is Screen.FreePlay -> app.home
             is Screen.Editor -> Screen.Home
+            is Screen.Drums -> (app.screen as Screen.Drums).back
             else -> Screen.Home
         }
     }
@@ -123,6 +126,7 @@ private fun AppContent(app: AppState) {
         Screen.Progress -> ProgressScreen(app)
         is Screen.FreePlay -> FreePlayScreen(app, app.exercise(s.exerciseId), s.bpm)
         is Screen.Editor -> EditorScreen(app, s.exerciseId)
+        is Screen.Drums -> DrumsScreen(app, s.exerciseId, s.back)
     }
 }
 

@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 /** Builds today's plan from everything played so far. */
 private suspend fun planFor(app: AppState, now: Long, runs: List<RunRecord>? = null): SessionPlan {
     val records = runs ?: app.dao.runRecords()
-    val current = app.exercises.mapNotNull { ex -> app.dao.progress(ex.id)?.let { ex.id to it.currentBpm } }.toMap()
+    val current = app.exercises.mapNotNull { ex -> app.dao.progress(app.progressId(ex.id))?.let { ex.id to it.currentBpm } }.toMap()
     val curriculum = app.exercises.filter { !it.isCustom }
     return SessionPlanner.plan(curriculum, records, current, now, app.settings.sessionMinutes)
 }

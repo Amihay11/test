@@ -66,6 +66,9 @@ public:
     // current schedule; call before setClicks.
     void setBacking(const std::vector<backing::Note> &notes, int loopFrames);
 
+    // Plays a sound as soon as possible (a tap on the on-screen drums). Any thread.
+    void trigger(int type, float gain);
+
     void setSensitivity(float s);
     void setNotchEnabled(bool enabled);
 
@@ -87,6 +90,7 @@ private:
     void analysisLoop();
     void updateAlignment();
     void renderClicks(float *out, int32_t numFrames, int64_t firstFrame);
+    void startVoice(int type, int64_t frame, float gain);
     void buildClickSounds();
 
     std::shared_ptr<oboe::AudioStream> output_;
@@ -98,6 +102,12 @@ private:
     std::vector<ScheduledClick> clicks_;
     size_t nextClick_ = 0;
     std::atomic<bool> clicksActive_{false};
+    struct Trigger {
+        int type;
+        float gain;
+    };
+    SpscRing<Trigger> triggers_{64};
+    std::mutex triggerMutex_;  // several UI threads may trigger; the ring has one producer
     std::atomic<bool> dropBacking_{false};
     std::atomic<uint64_t> callbackCount_{0};
 

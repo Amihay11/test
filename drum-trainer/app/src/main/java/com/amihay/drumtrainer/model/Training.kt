@@ -15,6 +15,9 @@ data class RunRecord(
 
 const val DAY_MS = 24L * 60 * 60 * 1000
 
+/** Suffix of the run mode for rounds tapped on the screen instead of played on drums. */
+const val TOUCH_TAG = "-touch"
+
 /** Gap-metronome rounds are stored as "gap_<on>_<off>". */
 data class GapSetup(val onBars: Int, val offBars: Int, val stepsPerBeat: Int = 1) {
     val id: String get() = "gap_${onBars}_$offBars"

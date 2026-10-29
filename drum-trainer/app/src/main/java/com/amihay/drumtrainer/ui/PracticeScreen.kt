@@ -51,6 +51,8 @@ import com.amihay.drumtrainer.model.RoundPlanner
 import com.amihay.drumtrainer.model.RoundStats
 import com.amihay.drumtrainer.model.SpeedTrainer
 import com.amihay.drumtrainer.model.Stats
+import com.amihay.drumtrainer.model.TOUCH_TAG
+import com.amihay.drumtrainer.model.appLights
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -94,13 +96,18 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
     val swingPct: Int? = if (ex.swing != null) swing else null
     val context = LocalContext.current
     var route by remember { mutableStateOf(currentAudioRoute(context)) }
+    // Practising without drums: taps on the screen know their drum (or hand) exactly.
+    val touch = app.settings.touchInput
     // Judge the drums only when every drum in the exercise has been learned.
-    val padAware = Scoring.padAware(ex, app.classifier.pads)
+    val padAware = if (touch) ex.usesPads else Scoring.padAware(ex, app.classifier.pads)
+    // Progress on the screen is kept apart from progress on the drums.
+    val progressId = app.progressId(ex.id)
     var outcome by remember { mutableStateOf<Outcome?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
+    var byHand by remember { mutableStateOf(false) }
 
     LaunchedEffect(ex.id) {
-        if (initialBpm != null) bpm = initialBpm else app.dao.progress(ex.id)?.let { bpm = it.currentBpm }
+        if (initialBpm != null) bpm = initialBpm else app.dao.progress(progressId)?.let { bpm = it.currentBpm }
     }
     KeepScreenOn()
 
@@ -110,7 +117,7 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
         plan = p
         phase = Phase.PREVIEW
         job = scope.launch {
-            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs, tailMs = 1200)
+            runner.run(p.clicks, p.endFrame, app.settings.inputOffsetMs, tailMs = 1200)
             phase = Phase.SETUP
         }
     }
@@ -123,18 +130,21 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
             PlayMode.NORMAL -> RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr,
                 swingPct = swingPct)
             PlayMode.TOGETHER -> RoundPlanner.forTogether(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr,
-                realDrums = route == AudioRoute.WIRED, swingPct = swingPct)
+                realDrums = touch || route == AudioRoute.WIRED, swingPct = swingPct)
             PlayMode.ECHO -> RoundPlanner.forCallResponse(ex, bpm, echoReps(ex, app.settings.barsPerRound), start, sr,
                 swingPct)
         }
         val aware = padAware
         plan = p
         notes = Scoring.notes(p, aware)
+        val hands = touch && !ex.usesPads && Scoring.handAware(notes)
+        byHand = hands
         phase = Phase.RUNNING
+        runner.touchInput = touch
         job = scope.launch {
-            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs,
-                classifier = if (aware) app.classifier else null)
-            match = Scoring.match(notes, runner.onsets.toList(), p, aware)
+            runner.run(p.clicks, p.endFrame, app.settings.inputOffsetMs,
+                classifier = if (aware && !touch) app.classifier else null)
+            match = Scoring.match(notes, runner.onsets.toList(), p, aware, byHand = hands)
             phase = Phase.RATING
         }
     }
@@ -143,15 +153,16 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
         val p = plan ?: return
         val roundMode = mode
         val m = match ?: return
-        val stats = Stats.compute(m, ex.subdivision)
+        // A tap has no loudness, so accents cannot be measured on the screen.
+        val stats = Stats.compute(m, ex.subdivision).let { if (touch) it.copy(accentDb = null) else it }
         val passed = Stats.passes(stats, ex.passStdMs, ex.passHitPct)
         scope.launch {
-            val old = app.dao.progress(ex.id)
-            val before = Progress(ex.id, old?.currentBpm ?: bpm, old?.consecutivePasses ?: 0, old?.bestPassedBpm ?: 0)
+            val old = app.dao.progress(progressId)
+            val before = Progress(progressId, old?.currentBpm ?: bpm, old?.consecutivePasses ?: 0, old?.bestPassedBpm ?: 0)
             val (after, tempoUp) = SpeedTrainer.afterRound(before, bpm, passed)
             val runId = app.dao.insertRun(
                 RunEntity(
-                    exerciseId = ex.id, mode = ex.kind.name.lowercase() + roundMode.tag, bpm = bpm, startedAt = System.currentTimeMillis(),
+                    exerciseId = ex.id, mode = ex.kind.name.lowercase() + roundMode.tag + if (touch) TOUCH_TAG else "", bpm = bpm, startedAt = System.currentTimeMillis(),
                     bars = p.bars, expected = stats.expected, hits = stats.hits, misses = stats.misses,
                     extras = stats.extras, meanMs = stats.meanMs, stdMs = stats.stdMs, hitPct = stats.hitPct,
                     accentDb = stats.accentDb, selfRating = rating, passed = passed,
@@ -169,7 +180,7 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                         strength = it.strength, pad = it.pads?.firstOrNull()?.id)
                 },
             )
-            app.dao.saveProgress(ProgressEntity(ex.id, after.currentBpm, after.consecutivePasses, after.bestPassedBpm))
+            app.dao.saveProgress(ProgressEntity(progressId, after.currentBpm, after.consecutivePasses, after.bestPassedBpm))
             outcome = Outcome(stats, passed, bpm, tempoUp, after.currentBpm, after.consecutivePasses)
             bpm = after.currentBpm
             phase = Phase.RESULTS
@@ -198,7 +209,18 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
 
         when (phase) {
             Phase.SETUP -> {
-                if (ex.usesPads && !padAware) {
+                if (touch) {
+                    Text(
+                        if (ex.usesPads) "אימון בלי תופים: נגן באצבעות על המערכת שבמסך. אפשר לנסות אותה כבר עכשיו."
+                        else "אימון בלי תופים: הקש ביד שמאל על הפד השמאלי וביד ימין על הימני – נמדדים גם התזמון וגם היד.",
+                        style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
+                    )
+                    if (app.settings.touchOffsetMs.isNaN()) {
+                        Banner("עוד לא כיילת את מסך המגע – בלי כיול ההקשות ייראו מאוחרות.", Palette.off) {
+                            app.screen = Screen.Calibration
+                        }
+                    }
+                } else if (ex.usesPads && !padAware) {
                     val missing = (ex.pads - app.classifier.pads).sortedBy { it.ordinal }.joinToString(", ") { it.he }
                     Banner("לא נלמדו: $missing. בסבב הזה נמדד רק התזמון – כדי לבדוק גם את התופים, למד אותם ב'ערכת תופים'.",
                         Palette.off) { app.screen = Screen.Kit }
@@ -210,6 +232,9 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ViewToggle(app)
                     FilledTonalButton(onClick = ::startPreview) { Text("🔊 השמע") }
+                    FilledTonalButton(onClick = { app.screen = Screen.Drums(ex.id, back = Screen.Practice(ex.id)) }) {
+                        Text("🥁 על המערכת")
+                    }
                 }
                 BpmStepper(bpm, { bpm = it })
                 if (ex.beatUnit == 8) {
@@ -250,7 +275,7 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                         style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                     )
                     PlayMode.TOGETHER -> Text(
-                        when (route) {
+                        if (touch) "האפליקציה מנגנת את התופים איתך, והם נדלקים על המסך." else when (route) {
                             AudioRoute.WIRED -> "האפליקציה מנגנת את התופים איתך באוזניות. המיקרופון שומע רק אותך."
                             AudioRoute.SPEAKER -> "האפליקציה מנגנת איתך צלילי הנחיה (צלילים מכוונים במקום תופים), " +
                                 "שהמיקרופון מסנן – כך נמדדת רק הנגינה שלך. עם אוזניות חוטיות תשמע תופים."
@@ -261,6 +286,7 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                         color = if (route == AudioRoute.BLUETOOTH) Palette.off else Palette.muted,
                     )
                 }
+                if (touch) TouchInput(app, runner, kit = ex.usesPads)
                 Text(
                     "יעד: ${ex.targetBpm} BPM · מעבר: סטיית תקן עד ${ex.passStdMs.roundToInt()}ms ו-${ex.passHitPct.roundToInt()}% פגיעות",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
@@ -278,6 +304,8 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 Text(if (beat < 0) "ספירה…" else "האפליקציה מנגנת – הקשב", style = MaterialTheme.typography.headlineMedium,
                     color = Palette.accent)
                 PatternView(app, ex, bar, emptyMap(), if (beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null)
+                val lights = appLights(p.clicks, runner.playhead, p.sampleRate, byHand = !ex.usesPads)
+                if (ex.usesPads) DrumKitView(app, appLights = lights) else HandPads(app, appLights = lights)
                 FilledTonalButton(onClick = {
                     job?.cancel()
                     phase = Phase.SETUP
@@ -285,7 +313,11 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
             }
 
             Phase.RUNNING -> plan?.let { p ->
-                LiveRound(app, ex, p, notes, padAware, runner)
+                LiveRound(app, ex, p, notes, padAware, runner, byHand)
+                if (touch) {
+                    TouchInput(app, runner, kit = ex.usesPads,
+                        appLights = appLights(p.clicks, runner.playhead, p.sampleRate, byHand = !ex.usesPads))
+                }
                 FilledTonalButton(onClick = {
                     job?.cancel()
                     phase = Phase.SETUP
@@ -295,7 +327,7 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
             Phase.RATING -> SelfRating(onRate = ::finish)
 
             Phase.RESULTS -> outcome?.let { o ->
-                RoundResults(ex, o)
+                RoundResults(ex, o, byHand)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = ::startRound) { Text("סבב נוסף ב-$bpm BPM") }
                     if (app.activeSession != null) FilledTonalButton(onClick = { app.screen = Screen.Session }) { Text("חזרה לאימון") }
@@ -307,13 +339,15 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
 }
 
 @Composable
-private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<ExpectedNote>, padAware: Boolean, runner: RoundRunner) {
+private fun LiveRound(
+    app: AppState, ex: Exercise, p: RoundPlan, notes: List<ExpectedNote>, padAware: Boolean, runner: RoundRunner, byHand: Boolean,
+) {
     val playhead = runner.playhead
     val beat = p.beatAt(playhead)
     // Hits arrive ~50-100 ms after they sound (detection + feature window); don't call a
     // note missed before then.
     val upTo = playhead - p.msToFrames(150.0)
-    val live = Scoring.match(notes, runner.onsets, p, padAware, upToFrame = upTo)
+    val live = Scoring.match(notes, runner.onsets, p, padAware, upToFrame = upTo, byHand = byHand)
     val bar = floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1)
     val states = HashMap<CellKey, StepState>()
     var lastHit: Double? = null
@@ -358,8 +392,8 @@ private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<Exp
                 else -> Palette.off
             },
         )
-        if (padAware) {
-            StatTile("תוף שגוי", "${live.wrongDrum.size}", color = if (live.wrongDrum.isEmpty()) Palette.muted else Palette.wrong)
+        if (padAware || byHand) {
+            StatTile(if (byHand) "יד שגויה" else "תוף שגוי", "${live.wrongDrum.size}", color = if (live.wrongDrum.isEmpty()) Palette.muted else Palette.wrong)
         }
         StatTile("מכות מיותרות", "${live.extras.size}", color = if (live.extras.isEmpty()) Palette.muted else Palette.bad)
     }
@@ -424,7 +458,7 @@ private fun SelfRating(onRate: (Int?) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RoundResults(ex: Exercise, o: Outcome) {
+private fun RoundResults(ex: Exercise, o: Outcome, byHand: Boolean) {
     val s = o.stats
     Text(
         if (o.passed) "עבר ✓" else "עוד לא",
@@ -450,7 +484,7 @@ private fun RoundResults(ex: Exercise, o: Outcome) {
         StatTile("פגיעות", "${s.hitPct.roundToInt()}%",
             color = if (s.hitPct >= ex.passHitPct) Palette.good else Palette.off, sub = "${s.hits}/${s.expected}")
         StatTile("מכות מיותרות", "${s.extras}", color = if (s.extras == 0) Palette.good else Palette.bad)
-        if (ex.usesPads) StatTile("תוף שגוי", "${s.wrongDrum}", color = if (s.wrongDrum == 0) Palette.good else Palette.wrong)
+        if (ex.usesPads || byHand) StatTile(if (byHand) "יד שגויה" else "תוף שגוי", "${s.wrongDrum}", color = if (s.wrongDrum == 0) Palette.good else Palette.wrong)
         s.accentDb?.let { StatTile("הדגשה מול רגיל", "${fmt1(it)}dB", sub = "כמה ההדגשה חזקה יותר") }
     }
     if (s.perHand.size > 1) {

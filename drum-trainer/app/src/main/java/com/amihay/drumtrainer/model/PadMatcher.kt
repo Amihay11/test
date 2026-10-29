@@ -15,6 +15,7 @@ object PadMatcher {
         windowFrames: Double,
         sampleRate: Int,
         upToFrame: Double = Double.MAX_VALUE,
+        byHand: Boolean = false,
     ): MatchResult {
         if (notes.isEmpty()) return MatchResult(emptyList(), emptyList(), 0)
         val assigned = arrayOfNulls<Onset>(notes.size)
@@ -22,7 +23,8 @@ object PadMatcher {
         val wrong = ArrayList<Onset>()
         val lo = notes.first().frame - windowFrames
         val hi = notes.last().frame + windowFrames
-        val byPad = notes.indices.groupBy { notes[it].pad }
+        // Notes are filled by drum, or (taps on the hand pads) by hand.
+        val byKey: Map<Any?, List<Int>> = notes.indices.groupBy { if (byHand) notes[it].hand else notes[it].pad }
 
         fun nearestIn(candidates: List<Int>?, frame: Double): Int? =
             candidates?.filter { abs(notes[it].frame - frame) <= windowFrames }
@@ -42,8 +44,8 @@ object PadMatcher {
 
         for (onset in onsets.sortedBy { it.frame }) {
             if (onset.frame < lo || onset.frame > hi) continue  // count-in or after the round
-            val pads = onset.pads.orEmpty()
-            if (pads.isEmpty()) {
+            val keys: List<Any> = if (byHand) listOfNotNull(onset.hand) else onset.pads.orEmpty()
+            if (keys.isEmpty()) {
                 // Drum not recognised: judge the timing against the nearest open note.
                 val i = notes.indices.filter { assigned[it] == null && abs(notes[it].frame - onset.frame) <= windowFrames }
                     .minByOrNull { abs(notes[it].frame - onset.frame) }
@@ -51,8 +53,8 @@ object PadMatcher {
                 continue
             }
             var matched = false
-            for (pad in pads) {
-                val i = nearestIn(byPad[pad], onset.frame) ?: continue
+            for (key in keys) {
+                val i = nearestIn(byKey[key], onset.frame) ?: continue
                 claim(i, onset)
                 matched = true
             }
@@ -98,12 +100,19 @@ object Scoring {
     fun notes(plan: RoundPlan, padAware: Boolean): List<ExpectedNote> =
         if (padAware || plan.notes.none { it.pad != null }) plan.notes else PadMatcher.timingNotes(plan.notes)
 
+    /** With [byHand] (taps on the hand pads), each note must be played with its own hand. */
     fun match(
         notes: List<ExpectedNote>, onsets: List<Onset>, plan: RoundPlan, padAware: Boolean,
-        upToFrame: Double = Double.MAX_VALUE,
+        upToFrame: Double = Double.MAX_VALUE, byHand: Boolean = false,
     ): MatchResult {
         val mine = onsets.filter { plan.isPlayerTime(it.frame) }
-        return if (padAware) PadMatcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
-        else Matcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
+        return when {
+            byHand -> PadMatcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame, byHand = true)
+            padAware -> PadMatcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
+            else -> Matcher.match(notes, mine, plan.windowFrames, plan.sampleRate, upToFrame)
+        }
     }
+
+    /** Hand-aware scoring works when every note names a hand (rudiments). */
+    fun handAware(notes: List<ExpectedNote>): Boolean = notes.isNotEmpty() && notes.all { it.hand == 'R' || it.hand == 'L' }
 }

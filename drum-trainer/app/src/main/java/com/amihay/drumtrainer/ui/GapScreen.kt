@@ -35,6 +35,7 @@ import com.amihay.drumtrainer.model.Matcher
 import com.amihay.drumtrainer.model.RoundPlan
 import com.amihay.drumtrainer.model.RoundPlanner
 import com.amihay.drumtrainer.model.Stats
+import com.amihay.drumtrainer.model.TOUCH_TAG
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -76,8 +77,9 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
             app.engine.scheduleStartFrame(), app.engine.sampleRate)
         plan = p
         phase = GapPhase.RUNNING
+        runner.touchInput = app.settings.touchInput
         job = scope.launch {
-            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs)
+            runner.run(p.clicks, p.endFrame, app.settings.inputOffsetMs)
             match = Matcher.match(p.notes, runner.onsets.toList(), p.windowFrames, p.sampleRate)
             phase = GapPhase.RATING
         }
@@ -100,7 +102,8 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
                 .put("segmentBpm", JSONArray(g.segments.map { it.playedBpm ?: JSONObject.NULL }))
             val runId = app.dao.insertRun(
                 RunEntity(
-                    exerciseId = "gap_${preset.on}_${preset.off}", mode = "gap", bpm = bpm,
+                    exerciseId = "gap_${preset.on}_${preset.off}",
+                    mode = "gap" + if (runner.touchInput) TOUCH_TAG else "", bpm = bpm,
                     startedAt = System.currentTimeMillis(), bars = p.bars, expected = s.expected, hits = s.hits,
                     misses = s.misses, extras = s.extras, meanMs = s.meanMs, stdMs = s.stdMs, hitPct = s.hitPct,
                     accentDb = null, selfRating = rating, passed = false, detailsJson = details.toString(),
@@ -162,6 +165,7 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
                         abs(last) <= GOOD_MS -> Palette.good
                         else -> Palette.off
                     })
+                if (runner.touchInput) TouchInput(app, runner, kit = false)
                 FilledTonalButton(onClick = {
                     job?.cancel()
                     phase = GapPhase.SETUP
