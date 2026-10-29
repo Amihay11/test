@@ -40,6 +40,7 @@ import com.amihay.drumtrainer.model.SessionPlan
 import com.amihay.drumtrainer.model.SessionPlanner
 import com.amihay.drumtrainer.model.SessionReview
 import com.amihay.drumtrainer.model.SessionSummary
+import com.amihay.drumtrainer.model.isCustom
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -47,7 +48,8 @@ import kotlinx.coroutines.launch
 private suspend fun planFor(app: AppState, now: Long, runs: List<RunRecord>? = null): SessionPlan {
     val records = runs ?: app.dao.runRecords()
     val current = app.exercises.mapNotNull { ex -> app.dao.progress(ex.id)?.let { ex.id to it.currentBpm } }.toMap()
-    return SessionPlanner.plan(app.exercises, records, current, now, app.settings.sessionMinutes)
+    val curriculum = app.exercises.filter { !it.isCustom }
+    return SessionPlanner.plan(curriculum, records, current, now, app.settings.sessionMinutes)
 }
 
 private fun itemName(app: AppState, item: SessionItem): String = when {

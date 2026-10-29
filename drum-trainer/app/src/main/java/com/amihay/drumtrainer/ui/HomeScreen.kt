@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.amihay.drumtrainer.data.ProgressEntity
 import com.amihay.drumtrainer.model.Exercise
 import com.amihay.drumtrainer.model.ExerciseKind
+import com.amihay.drumtrainer.model.isCustom
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -87,7 +89,20 @@ fun HomeScreen(app: AppState) {
                 }
             }
         }
-        for ((title, list) in exerciseSections(app.exercises)) {
+        item(key = "custom-title") {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                Text("התרגילים שלי", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                FilledTonalButton(onClick = { app.screen = Screen.Editor() }) { Text("+ תרגיל חדש") }
+            }
+        }
+        if (app.customExercises.isEmpty()) {
+            item(key = "custom-empty") {
+                Text("כאן יופיעו תרגילים שתכתוב בעורך – גרוב, מילוי או סטיקינג.",
+                    style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+            }
+        }
+        items(app.customExercises, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[ex.id]) }
+        for ((title, list) in exerciseSections(app.exercises.filter { !it.isCustom })) {
             item(key = "title-$title") {
                 Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp))
             }
@@ -125,6 +140,9 @@ private fun ExerciseRow(app: AppState, ex: Exercise, p: ProgressEntity?) {
                 ex.name + if (ex.kind != ExerciseKind.RUDIMENT) " · רמה ${ex.level}" else "",
                 style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
             )
+        }
+        if (ex.isCustom) {
+            OutlinedButton(onClick = { app.screen = Screen.Editor(ex.id) }, modifier = Modifier.padding(end = 8.dp)) { Text("ערוך") }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${p?.currentBpm ?: ex.startBpm} BPM", style = MaterialTheme.typography.titleMedium)

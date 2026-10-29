@@ -41,6 +41,7 @@ import com.amihay.drumtrainer.data.HitEntity
 import com.amihay.drumtrainer.data.ProgressEntity
 import com.amihay.drumtrainer.data.RunEntity
 import com.amihay.drumtrainer.model.Exercise
+import com.amihay.drumtrainer.model.isCustom
 import com.amihay.drumtrainer.model.MatchResult
 import com.amihay.drumtrainer.model.ExpectedNote
 import com.amihay.drumtrainer.model.Scoring
@@ -184,6 +185,10 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 Text(ex.nameHe, style = MaterialTheme.typography.headlineMedium)
                 Text(ex.name, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
             }
+            if (ex.isCustom) OutlinedButton(onClick = {
+                job?.cancel()
+                app.screen = Screen.Editor(ex.id)
+            }) { Text("ערוך") }
             OutlinedButton(onClick = {
                 job?.cancel()
                 app.screen = app.home

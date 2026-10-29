@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import com.amihay.drumtrainer.ui.AppState
 import com.amihay.drumtrainer.ui.CalibrationScreen
 import com.amihay.drumtrainer.ui.DrumTheme
+import com.amihay.drumtrainer.ui.EditorScreen
 import com.amihay.drumtrainer.ui.FreePlayScreen
 import com.amihay.drumtrainer.ui.ProgressScreen
 import com.amihay.drumtrainer.ui.SessionScreen
@@ -57,10 +58,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         app = AppState(applicationContext)
-        // Open an exercise directly, e.g. `adb shell am start ... --es exercise rock_1`.
+        // Open an exercise or the editor directly, e.g.
+        // `adb shell am start ... --es exercise rock_1` or `--ez editor true`.
         intent.getStringExtra("exercise")?.let { id ->
             if (app.exercises.any { it.id == id }) app.screen = Screen.Practice(id)
         }
+        if (intent.getBooleanExtra("editor", false)) app.screen = Screen.Editor()
         hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         if (!hasMic) askMic.launch(Manifest.permission.RECORD_AUDIO)
@@ -103,6 +106,7 @@ private fun AppContent(app: AppState) {
         app.screen = when (app.screen) {
             Screen.Session, is Screen.SessionSummary -> Screen.Home
             is Screen.Practice, is Screen.Gap, is Screen.FreePlay -> app.home
+            is Screen.Editor -> Screen.Home
             else -> Screen.Home
         }
     }
@@ -118,6 +122,7 @@ private fun AppContent(app: AppState) {
         is Screen.SessionSummary -> SessionSummaryScreen(app, s.sessionId)
         Screen.Progress -> ProgressScreen(app)
         is Screen.FreePlay -> FreePlayScreen(app, app.exercise(s.exerciseId), s.bpm)
+        is Screen.Editor -> EditorScreen(app, s.exerciseId)
     }
 }
 

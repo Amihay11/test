@@ -9,10 +9,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.amihay.drumtrainer.audio.AudioEngine
 import com.amihay.drumtrainer.data.AppDatabase
+import com.amihay.drumtrainer.data.CustomExerciseStore
 import com.amihay.drumtrainer.data.PadStore
 import com.amihay.drumtrainer.data.Settings
 import com.amihay.drumtrainer.model.DrumClassifier
 import com.amihay.drumtrainer.model.Exercise
+import com.amihay.drumtrainer.model.ExerciseDraft
 import com.amihay.drumtrainer.model.ExerciseParser
 import com.amihay.drumtrainer.model.GapSetup
 import com.amihay.drumtrainer.model.PartKind
@@ -35,6 +37,8 @@ sealed interface Screen {
     data class SessionSummary(val sessionId: Long) : Screen
     data object Progress : Screen
     data class FreePlay(val exerciseId: String, val bpm: Int) : Screen
+    /** Exercise editor; null opens a new exercise. */
+    data class Editor(val exerciseId: String? = null) : Screen
 }
 
 /** A training session in progress: its plan, the current part, and what was played. */
@@ -67,8 +71,25 @@ class AppState(context: Context) {
     val engine = AudioEngine()
     val settings = Settings(context)
     val dao = AppDatabase.get(context).dao()
-    val exercises: List<Exercise> = listOf("rudiments", "grooves", "styles").flatMap { name ->
+    private val builtIn: List<Exercise> = listOf("rudiments", "grooves", "styles").flatMap { name ->
         ExerciseParser.parse(context.assets.open("exercises/$name.json").bufferedReader().use { it.readText() })
+    }
+    private val customStore = CustomExerciseStore(File(context.filesDir, "custom_exercises.json"))
+
+    /** Exercises written in the editor (stage 6). */
+    var customExercises by mutableStateOf(customStore.load())
+        private set
+
+    val exercises: List<Exercise> get() = builtIn + customExercises
+
+    fun saveCustom(draft: ExerciseDraft) {
+        customStore.upsert(draft.toJson())
+        customExercises = customStore.load()
+    }
+
+    fun deleteCustom(id: String) {
+        customStore.delete(id)
+        customExercises = customStore.load()
     }
 
     private val padStore = PadStore(File(context.filesDir, "pads.json"))
