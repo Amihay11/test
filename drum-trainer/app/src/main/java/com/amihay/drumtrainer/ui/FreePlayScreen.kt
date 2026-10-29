@@ -24,10 +24,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.amihay.drumtrainer.audio.AudioRoute
-import com.amihay.drumtrainer.audio.currentAudioRoute
+import com.amihay.drumtrainer.model.Backing
+import com.amihay.drumtrainer.model.Click
+import com.amihay.drumtrainer.model.ClickType
 import com.amihay.drumtrainer.model.Exercise
 import com.amihay.drumtrainer.model.FreePlayStats
 import com.amihay.drumtrainer.model.RoundPlan
@@ -48,7 +48,6 @@ private const val FREE_PLAY_BARS = 32
 fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
     val scope = rememberCoroutineScope()
     val runner = remember { RoundRunner(app.engine) }
-    val context = LocalContext.current
     var bpm by remember { mutableIntStateOf(initialBpm) }
     var plan by remember { mutableStateOf<RoundPlan?>(null) }
     var result by remember { mutableStateOf<FreePlayStats.Summary?>(null) }
@@ -56,9 +55,16 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
     KeepScreenOn()
 
     fun start() {
-        val route = currentAudioRoute(context)
-        val p = RoundPlanner.forTogether(ex, bpm, FREE_PLAY_BARS, app.engine.scheduleStartFrame(), app.engine.sampleRate,
-            realDrums = route == AudioRoute.WIRED)
+        val sr = app.engine.sampleRate
+        val loop = Backing.loop(ex, bpm, sr)
+        app.engine.setBacking(loop)
+        val base = RoundPlanner.forExercise(ex, bpm, FREE_PLAY_BARS, app.engine.scheduleStartFrame(), sr)
+        // Count-in clicks, then the bass-and-chords loop repeated over the round.
+        val countIn = base.clicks.filter { it.frame < base.firstNoteFrame - 1 }
+        val loops = (0 until FREE_PLAY_BARS / loop.bars).map {
+            Click((base.firstNoteFrame + it.toLong() * loop.loopFrames).toLong(), ClickType.BACKING)
+        }
+        val p = base.copy(clicks = countIn + loops)
         plan = p
         result = null
         job = scope.launch {
@@ -87,8 +93,8 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
             }) { Text(if (app.activeSession != null) "לאימון" else "חזרה") }
         }
         Text(
-            "האפליקציה מנגנת את הגרוב, ואתה מנגן מה שבא לך מעליו: וריאציות, מילויים, שקט. אין ציון – " +
-                "בסוף רק תמונה של הזמן.",
+            "האפליקציה מנגנת לופ של בס ואקורדים בסגנון של ${ex.nameHe}, ואתה מנגן מה שבא לך: הגרוב, וריאציות, " +
+                "מילויים, שקט. אין ציון – בסוף רק תמונה של הזמן.",
             style = MaterialTheme.typography.bodyLarge,
         )
 

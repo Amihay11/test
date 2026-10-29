@@ -22,6 +22,9 @@ object ClickType {
         else -> 1
     }
 
+    /** The free-play backing loop (see AudioEngine.setBacking). */
+    const val BACKING = 15
+
     fun isAppSound(type: Int) = type >= PAD_BASE
 }
 
@@ -96,8 +99,18 @@ data class RoundPlan(
 
 object RoundPlanner {
 
+    /**
+     * Frames from the first note to grid step [step]. With swing, the second step of each
+     * pair is delayed: it starts [swingPct] % of the way through the pair instead of 50 %.
+     */
+    fun stepOffset(step: Int, framesPerStep: Double, swingPct: Int?): Double {
+        if (swingPct == null || swingPct == 50 || step % 2 == 0) return step * framesPerStep
+        return (step - 1 + 2 * swingPct / 100.0) * framesPerStep
+    }
+
     fun forExercise(
         ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, endOnLanding: Boolean = true,
+        swingPct: Int? = ex.swing,
     ): RoundPlan {
         val framesPerBeat = sampleRate * 60.0 / bpm
         val framesPerStep = framesPerBeat / ex.subdivision
@@ -114,7 +127,7 @@ object RoundPlanner {
             for (stroke in ex.strokesAt(step)) {
                 notes += ExpectedNote(
                     index = notes.size,
-                    frame = first + step * framesPerStep,
+                    frame = first + stepOffset(step, framesPerStep, swingPct),
                     hand = stroke.hand,
                     accent = stroke.accent,
                     bar = bar,
@@ -127,7 +140,7 @@ object RoundPlanner {
             }
         }
         val clickBars = List(bars) { true }
-        val clicks = clicks(startFrame, framesPerBeat, ex.beatsPerBar, countIn, clickBars).toMutableList()
+        val clicks = clicks(startFrame, framesPerBeat, ex.beatsPerBar, countIn, clickBars, ex.accentBeats).toMutableList()
         if (endsOnLanding) clicks += Click((first + bars * ex.beatsPerBar * framesPerBeat).toLong(), ClickType.ACCENT)
         return RoundPlan(
             sampleRate, bpm.toDouble(), startFrame, framesPerBeat, framesPerStep, ex.beatsPerBar,
@@ -153,16 +166,18 @@ object RoundPlanner {
      * microphone cannot hear it, and it plays real drum sounds. The metronome sounds only
      * the count-in: the pattern itself keeps the time.
      */
-    fun forTogether(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, realDrums: Boolean): RoundPlan {
-        val p = forExercise(ex, bpm, bars, startFrame, sampleRate)
+    fun forTogether(
+        ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, realDrums: Boolean, swingPct: Int? = ex.swing,
+    ): RoundPlan {
+        val p = forExercise(ex, bpm, bars, startFrame, sampleRate, swingPct = swingPct)
         val countIn = p.clicks.filter { it.frame < p.firstNoteFrame - 1 }
         val app = if (realDrums) drumHits(p.notes) else p.notes.map { Click(it.frame.toLong(), ClickType.guide(it.pad), noteGain(it)) }
         return p.copy(clicks = (countIn + app).sortedBy { it.frame })
     }
 
     /** The exercise played by the app with the metronome, for listening before playing. */
-    fun preview(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int): RoundPlan {
-        val p = forExercise(ex, bpm, bars, startFrame, sampleRate)
+    fun preview(ex: Exercise, bpm: Int, bars: Int, startFrame: Long, sampleRate: Int, swingPct: Int? = ex.swing): RoundPlan {
+        val p = forExercise(ex, bpm, bars, startFrame, sampleRate, swingPct = swingPct)
         return p.copy(clicks = (p.clicks + drumHits(p.notes)).sortedBy { it.frame })
     }
 
@@ -171,10 +186,12 @@ object RoundPlanner {
      * [reps] times. Only the player's bars are scored. Fills have no landing here: the bar
      * after the player's fill is the app's turn again.
      */
-    fun forCallResponse(ex: Exercise, bpm: Int, reps: Int, startFrame: Long, sampleRate: Int): RoundPlan {
+    fun forCallResponse(
+        ex: Exercise, bpm: Int, reps: Int, startFrame: Long, sampleRate: Int, swingPct: Int? = ex.swing,
+    ): RoundPlan {
         val cycle = ex.cycleBars
         val bars = reps * 2 * cycle
-        val full = forExercise(ex, bpm, bars, startFrame, sampleRate, endOnLanding = false)
+        val full = forExercise(ex, bpm, bars, startFrame, sampleRate, endOnLanding = false, swingPct = swingPct)
         val listen = (0 until bars).filter { (it / cycle) % 2 == 0 }.toSet()
         val appNotes = full.notes.filter { it.bar in listen }
         val playerNotes = full.notes.filter { it.bar !in listen }
@@ -225,17 +242,18 @@ object RoundPlanner {
 
     private fun clicks(
         startFrame: Long, framesPerBeat: Double, beatsPerBar: Int, countInBeats: Int, clickBars: List<Boolean>,
+        accentBeats: Set<Int> = setOf(0),
     ): List<Click> {
         val out = ArrayList<Click>()
         for (b in 0 until countInBeats) {
-            out += Click((startFrame + b * framesPerBeat).toLong(), if (b == 0) ClickType.ACCENT else ClickType.NORMAL)
+            out += Click((startFrame + b * framesPerBeat).toLong(), if (b in accentBeats) ClickType.ACCENT else ClickType.NORMAL)
         }
         val first = startFrame + countInBeats * framesPerBeat
         clickBars.forEachIndexed { bar, audible ->
             if (!audible) return@forEachIndexed
             for (b in 0 until beatsPerBar) {
                 val frame = first + (bar * beatsPerBar + b) * framesPerBeat
-                out += Click(frame.toLong(), if (b == 0) ClickType.ACCENT else ClickType.NORMAL)
+                out += Click(frame.toLong(), if (b in accentBeats) ClickType.ACCENT else ClickType.NORMAL)
             }
         }
         return out

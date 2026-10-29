@@ -67,7 +67,7 @@ class AppState(context: Context) {
     val engine = AudioEngine()
     val settings = Settings(context)
     val dao = AppDatabase.get(context).dao()
-    val exercises: List<Exercise> = listOf("rudiments", "grooves").flatMap { name ->
+    val exercises: List<Exercise> = listOf("rudiments", "grooves", "styles").flatMap { name ->
         ExerciseParser.parse(context.assets.open("exercises/$name.json").bufferedReader().use { it.readText() })
     }
 

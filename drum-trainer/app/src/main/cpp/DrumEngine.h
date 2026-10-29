@@ -10,6 +10,7 @@
 #include <thread>
 #include <vector>
 
+#include "BackingSynth.h"
 #include "OnsetDetector.h"
 #include "SpscRing.h"
 
@@ -19,9 +20,10 @@ enum ClickType : int {
     kClickBroadband = 2,  // used for loopback latency calibration (not notched)
     kPadSoundBase = 3,    // kPadSoundBase + Pad.ordinal: drum sounds for playing patterns
     kGuideSoundBase = 11, // + 0..3: tonal guide sounds the detector ignores (GuideTones.h)
+    kBackingSound = 15,   // the free-play backing loop, rendered by setBacking()
 };
 
-constexpr int kNumSounds = kGuideSoundBase + 4;
+constexpr int kNumSounds = kBackingSound + 1;
 
 struct ScheduledClick {
     int64_t frame;  // output-stream frame index
@@ -60,6 +62,10 @@ public:
     void setClicks(const std::vector<ScheduledClick> &clicks);
     void clearClicks();
 
+    // Renders a backing loop (see BackingSynth.h) into the kBackingSound slot. Stops the
+    // current schedule; call before setClicks.
+    void setBacking(const std::vector<backing::Note> &notes, int loopFrames);
+
     void setSensitivity(float s);
     void setNotchEnabled(bool enabled);
 
@@ -92,6 +98,7 @@ private:
     std::vector<ScheduledClick> clicks_;
     size_t nextClick_ = 0;
     std::atomic<bool> clicksActive_{false};
+    std::atomic<bool> dropBacking_{false};
     std::atomic<uint64_t> callbackCount_{0};
 
     struct Voice {

@@ -101,8 +101,12 @@ fun HomeScreen(app: AppState) {
 private fun exerciseSections(all: List<Exercise>): List<Pair<String, List<Exercise>>> = listOf(
     "רודימנטים" to all.filter { it.kind == ExerciseKind.RUDIMENT },
     "עצמאות בין הגפיים" to all.filter { it.kind == ExerciseKind.INDEPENDENCE },
-    "גרובים – רוק" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "rock" },
-    "גרובים – פאנק" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "funk" },
+    "גרובים – רוק ופופ" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "rock" },
+    "גרובים – פאנק וסול" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "funk" },
+    "ג'אז ובלוז" to all.filter { it.kind == ExerciseKind.GROOVE && (it.style == "jazz" || it.style == "blues") },
+    "לטיני" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "latin" },
+    "מזרחי וים-תיכוני" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "mideast" },
+    "אלקטרוני ומשקלים מורכבים" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "electronic" },
     "מעברים ומילויים" to all.filter { it.kind == ExerciseKind.FILL },
 ).filter { it.second.isNotEmpty() }.map { (t, l) -> t to l.sortedBy { it.level } }
 

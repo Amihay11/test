@@ -11,7 +11,8 @@ OnsetDetector::OnsetDetector(int sampleRate)
       logMag_(kFftSize / 2 + 1, 0.0f),
       pastMax_(kLag, std::vector<float>(kFftSize / 2 + 1, 0.0f)),
       binEnabled_(kFftSize / 2 + 1, 1),
-      hist_(kHistSize, 0.0f) {
+      hist_(kHistSize, 0.0f),
+      attackHist_(kHistSize, 0.0f) {
     float windowSum = 0.0f;
     for (int i = 0; i < kFftSize; ++i) {
         window_[i] = 0.5f - 0.5f * std::cos(2.0f * static_cast<float>(M_PI) * i / kFftSize);
@@ -20,6 +21,7 @@ OnsetDetector::OnsetDetector(int sampleRate)
     for (auto &w : window_) w /= windowSum;
 
     highPass_.setHighPass(sampleRate, 40.0, 0.707);
+    attackHighPass_.setHighPass(sampleRate, 300.0, 0.707);
 
     const double clickFreqs[] = {kClickFreqNormal, kClickFreqAccent,
                                  2 * kClickFreqNormal, 2 * kClickFreqAccent};
@@ -141,7 +143,7 @@ bool OnsetDetector::refine(int64_t windowEnd, OnsetEvent &out) {
     int64_t to = nextFrame_ - shortLen;  // exclusive
     if (from >= to) return false;
 
-    auto absAt = [&](int64_t i) { return std::fabs(hist_[i & kHistMask]); };
+    auto absAt = [&](int64_t i) { return std::fabs(attackHist_[i & kHistMask]); };
     auto maxAbs = [&](int64_t a, int64_t b) {
         float m = 0.0f;
         for (int64_t i = a; i < b; ++i) m = std::max(m, absAt(i));
@@ -169,6 +171,10 @@ bool OnsetDetector::refine(int64_t windowEnd, OnsetEvent &out) {
     if (best < 0 || peak <= 0.0f) return false;
     peak = std::max(peak, maxAbs(to, nextFrame_));
 
+    // Strength is the full-band peak (what the ear hears as loudness).
+    float strength = 0.0f;
+    for (int64_t i = best; i < nextFrame_; ++i) strength = std::max(strength, std::fabs(hist_[i & kHistMask]));
+
     // Sample-accurate start: first sample in the short window that clearly exceeds
     // the level that was there before.
     float level = std::max(1.5f * bestBefore, 0.05f * peak);
@@ -181,7 +187,7 @@ bool OnsetDetector::refine(int64_t windowEnd, OnsetEvent &out) {
     }
 
     out.frame = attack;
-    out.strength = peak;
+    out.strength = strength;
     return true;
 }
 

@@ -56,6 +56,22 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetClicks)(JNIEnv *env, jobject, jlongArray 
     engine().setClicks(clicks);
 }
 
+JNIEXPORT void JNICALL JNI_FN(nativeSetBacking)(JNIEnv *env, jobject, jintArray starts, jintArray lengths,
+                                                jintArray midis, jfloatArray gains, jintArray instruments,
+                                                jint loopFrames) {
+    jsize n = env->GetArrayLength(starts);
+    std::vector<jint> s(n), l(n), m(n), ins(n);
+    std::vector<jfloat> g(n);
+    env->GetIntArrayRegion(starts, 0, n, s.data());
+    env->GetIntArrayRegion(lengths, 0, n, l.data());
+    env->GetIntArrayRegion(midis, 0, n, m.data());
+    env->GetFloatArrayRegion(gains, 0, n, g.data());
+    env->GetIntArrayRegion(instruments, 0, n, ins.data());
+    std::vector<backing::Note> notes(n);
+    for (jsize i = 0; i < n; ++i) notes[i] = {s[i], l[i], m[i], g[i], ins[i]};
+    engine().setBacking(notes, loopFrames);
+}
+
 JNIEXPORT void JNICALL JNI_FN(nativeClearClicks)(JNIEnv *, jobject) { engine().clearClicks(); }
 
 JNIEXPORT void JNICALL JNI_FN(nativeSetSensitivity)(JNIEnv *, jobject, jfloat s) {

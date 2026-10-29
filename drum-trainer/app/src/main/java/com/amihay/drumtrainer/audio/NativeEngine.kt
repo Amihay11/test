@@ -1,5 +1,6 @@
 package com.amihay.drumtrainer.audio
 
+import com.amihay.drumtrainer.model.BackingLoop
 import com.amihay.drumtrainer.model.Click
 import com.amihay.drumtrainer.model.HitFeatures
 import com.amihay.drumtrainer.model.Onset
@@ -19,6 +20,9 @@ object NativeEngine {
     external fun nativeWriteFrame(): Long
     external fun nativeSetClicks(frames: LongArray, types: IntArray, gains: FloatArray)
     external fun nativeClearClicks()
+    external fun nativeSetBacking(
+        starts: IntArray, lengths: IntArray, midis: IntArray, gains: FloatArray, instruments: IntArray, loopFrames: Int,
+    )
     external fun nativeSetSensitivity(s: Float)
     external fun nativeSetNotch(enabled: Boolean)
     external fun nativePollOnsets(out: DoubleArray): Int
@@ -66,6 +70,16 @@ class AudioEngine {
     }
 
     fun clearClicks() = NativeEngine.nativeClearClicks()
+
+    /** Renders a backing loop; schedule it with [ClickType.BACKING] clicks at each loop start. */
+    fun setBacking(loop: BackingLoop) {
+        val n = loop.notes
+        NativeEngine.nativeSetBacking(
+            IntArray(n.size) { n[it].startFrame }, IntArray(n.size) { n[it].lengthFrames },
+            IntArray(n.size) { n[it].midi }, FloatArray(n.size) { n[it].gain },
+            IntArray(n.size) { n[it].instrument }, loop.loopFrames,
+        )
+    }
 
     fun setSensitivity(s: Float) = NativeEngine.nativeSetSensitivity(s)
 

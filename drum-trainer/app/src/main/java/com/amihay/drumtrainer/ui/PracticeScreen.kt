@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -27,7 +28,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -84,6 +88,9 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
     var match by remember { mutableStateOf<MatchResult?>(null) }
     var notes by remember { mutableStateOf<List<ExpectedNote>>(emptyList()) }
     var mode by remember { mutableStateOf(PlayMode.NORMAL) }
+    // Swing for patterns that can swing (null = straight only).
+    var swing by remember { mutableIntStateOf(ex.swing ?: 50) }
+    val swingPct: Int? = if (ex.swing != null) swing else null
     val context = LocalContext.current
     var route by remember { mutableStateOf(currentAudioRoute(context)) }
     // Judge the drums only when every drum in the exercise has been learned.
@@ -97,7 +104,8 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
     KeepScreenOn()
 
     fun startPreview() {
-        val p = RoundPlanner.preview(ex, bpm, maxOf(ex.cycleBars, 2), app.engine.scheduleStartFrame(), app.engine.sampleRate)
+        val p = RoundPlanner.preview(ex, bpm, maxOf(ex.cycleBars, 2), app.engine.scheduleStartFrame(), app.engine.sampleRate,
+            swingPct)
         plan = p
         phase = Phase.PREVIEW
         job = scope.launch {
@@ -111,10 +119,12 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
         val sr = app.engine.sampleRate
         route = currentAudioRoute(context)
         val p = when (mode) {
-            PlayMode.NORMAL -> RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr)
+            PlayMode.NORMAL -> RoundPlanner.forExercise(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr,
+                swingPct = swingPct)
             PlayMode.TOGETHER -> RoundPlanner.forTogether(ex, bpm, ex.roundBars(app.settings.barsPerRound), start, sr,
-                realDrums = route == AudioRoute.WIRED)
-            PlayMode.ECHO -> RoundPlanner.forCallResponse(ex, bpm, echoReps(ex, app.settings.barsPerRound), start, sr)
+                realDrums = route == AudioRoute.WIRED, swingPct = swingPct)
+            PlayMode.ECHO -> RoundPlanner.forCallResponse(ex, bpm, echoReps(ex, app.settings.barsPerRound), start, sr,
+                swingPct)
         }
         val aware = padAware
         plan = p
@@ -197,6 +207,24 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                     FilledTonalButton(onClick = ::startPreview) { Text("🔊 השמע") }
                 }
                 BpmStepper(bpm, { bpm = it })
+                if (ex.beatUnit == 8) {
+                    Text("הטמפו נמדד בשמיניות (BPM של שמינית).", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+                }
+                if (ex.swing != null) {
+                    Text(
+                        "סווינג: $swing% · " + when {
+                            swing <= 52 -> "ישר"
+                            swing in 64..68 -> "טריולה"
+                            swing > 68 -> "מנוקד חזק"
+                            else -> "קל"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    // A numeric control: 50 % on the left, like the tempo buttons.
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Slider(value = swing.toFloat(), onValueChange = { swing = it.roundToInt() }, valueRange = 50f..75f, steps = 24)
+                    }
+                }
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,

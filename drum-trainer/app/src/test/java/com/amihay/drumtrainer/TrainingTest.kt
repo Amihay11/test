@@ -140,9 +140,9 @@ class FreePlayTest {
             .first { it.id == "rock_1" }
         val p = com.amihay.drumtrainer.model.RoundPlanner.forTogether(ex, 100, 4, 0, 48000, realDrums = false)
         val grid = p.framesPerBeat / 4
-        // Hits on assorted 16ths, 3 ms late, plus one far off the grid.
+        // Hits on assorted 16ths, 3 ms late, plus one far from both the 16th and triplet grids.
         val onsets = (0 until 40 step 3).map { com.amihay.drumtrainer.model.Onset(p.firstNoteFrame + it * grid + p.msToFrames(3.0), 0.5f) } +
-            com.amihay.drumtrainer.model.Onset(p.firstNoteFrame + 5.5 * grid, 0.5f)
+            com.amihay.drumtrainer.model.Onset(p.firstNoteFrame + 4.5 * grid, 0.5f)
         val s = com.amihay.drumtrainer.model.FreePlayStats.summarize(onsets, p)
         assertEquals(15, s.hits)
         assertEquals(100.0 * 14 / 15, s.onGridPct, 1e-9)

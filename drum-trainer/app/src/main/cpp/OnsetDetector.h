@@ -53,6 +53,7 @@ public:
                 for (auto &f : notches_) y = f.process(y);
             }
             hist_[nextFrame_ & kHistMask] = y;
+            attackHist_[nextFrame_ & kHistMask] = attackHighPass_.process(y);
             ++nextFrame_;
             if (++hopFill_ == kHop) {
                 hopFill_ = 0;
@@ -135,6 +136,10 @@ private:
     int pastPos_ = 0;
     std::vector<uint8_t> binEnabled_;
     std::vector<float> hist_;
+    // High-passed copy used to pin down attack times: a drum's attack is broadband,
+    // while sustained bass (e.g. the free-play backing) would mask it at full band.
+    std::vector<float> attackHist_;
+    Biquad attackHighPass_;
     float fluxHistory_[kMedianLen] = {};
     int fluxHistPos_ = 0;
     int fluxHistCount_ = 0;

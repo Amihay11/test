@@ -8,6 +8,7 @@
 #include <random>
 #include <vector>
 
+#include "../app/src/main/cpp/BackingSynth.h"
 #include "../app/src/main/cpp/GuideTones.h"
 #include "../app/src/main/cpp/OnsetDetector.h"
 
@@ -234,6 +235,62 @@ bool runGuideOnly() {
     return count == 0;
 }
 
+// A bass + chords backing loop like the one free play uses: E-B-C#m-A, bass in 8ths.
+std::vector<float> backingLoop(double bpm, int bars, float level) {
+    const int beat = static_cast<int>(kSr * 60.0 / bpm);
+    const int bar = 4 * beat;
+    const int roots[4] = {40, 47, 49, 45};  // E2 B2 C#3 A2
+    const int third[4] = {4, 4, 3, 4};
+    std::vector<backing::Note> notes;
+    for (int b = 0; b < bars; ++b) {
+        int r = roots[b % 4];
+        for (int e = 0; e < 8; ++e) {
+            int octave = (e % 4 == 3) ? 12 : 0;
+            notes.push_back({b * bar + e * beat / 2, beat / 2 - kSr / 100, r + octave, 0.35f * level, backing::kBass});
+        }
+        for (int iv : {12, 12 + third[b % 4], 19}) notes.push_back({b * bar, bar - kSr / 50, r + iv, 0.08f * level, backing::kPad});
+    }
+    return backing::render(notes, bars * bar, kSr);
+}
+
+bool runBackingOnly(float level) {
+    std::vector<float> buf = backingLoop(100, 8, level);
+    std::mt19937 rng(11);
+    std::normal_distribution<float> noise(0.0f, 0.0018f);
+    float peak = 0;
+    for (auto &s : buf) { s += noise(rng); peak = std::max(peak, std::fabs(s)); }
+    OnsetDetector det(kSr);
+    det.setSensitivity(0.6f);
+    int count = 0;
+    det.process(buf.data(), static_cast<int>(buf.size()), 0, [&](const OnsetEvent &) { ++count; });
+    std::printf("backing only (peak %.2f)              detections=%d  %s\n", peak, count, count == 0 ? "OK" : "FAIL");
+    return count == 0;
+}
+
+bool runDrumsOverBacking(float level) {
+    std::vector<float> buf = backingLoop(100, 8, level);
+    std::mt19937 rng(12);
+    std::normal_distribution<float> jitter(0.0f, 8.0f);
+    std::vector<Hit> truth;
+    double step = kSr * 60.0 / 100 / 2;
+    int i = 0;
+    for (double t = kSr / 2; t < buf.size() - kSr / 2; t += step, ++i) {
+        int64_t at = static_cast<int64_t>(t + jitter(rng) * kSr / 1000.0);
+        addDrum(buf, at, 0.4f, rng, i % 4 == 0);
+        truth.push_back({at, 0.4f});
+    }
+    OnsetDetector det(kSr);
+    det.setSensitivity(0.6f);
+    std::vector<OnsetEvent> found;
+    det.process(buf.data(), static_cast<int>(buf.size()), 0, [&](const OnsetEvent &e) { found.push_back(e); });
+    Result r = evaluate(truth, found);
+    double recall = static_cast<double>(r.truePos) / truth.size();
+    bool ok = recall >= 0.98 && r.falsePos <= 1 && std::fabs(r.meanErrMs) < 1.0 && r.stdErrMs < 1.0;
+    std::printf("drums over backing                  hits=%3zu recall=%.3f fp=%2d  err mean=%+.2fms std=%.2fms  %s\n",
+                truth.size(), recall, r.falsePos, r.meanErrMs, r.stdErrMs, ok ? "OK" : "FAIL");
+    return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -248,6 +305,9 @@ int main() {
     ok &= runGuideOnly();
     ok &= runPlayAlong(0.8f, 0.5f);
     ok &= runPlayAlong(0.4f, 0.15f);
+    ok &= runBackingOnly(1.0f);
+    ok &= runBackingOnly(2.0f);
+    ok &= runDrumsOverBacking(1.0f);
     std::printf(ok ? "ALL PASSED\n" : "SOME FAILED\n");
     return ok ? 0 : 1;
 }

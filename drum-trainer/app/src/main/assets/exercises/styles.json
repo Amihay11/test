@@ -1,0 +1,435 @@
+[
+  {
+    "id": "jazz_ride",
+    "kind": "groove",
+    "style": "jazz",
+    "level": 1,
+    "name": "Swing ride pattern",
+    "nameHe": "תבנית רייד בסווינג",
+    "tip": "דינג, דינג-דה-דינג: הרייד נושא את הזמן, ההיי-האט ברגל על 2 ו-4.",
+    "subdivision": 2,
+    "swing": 66,
+    "startBpm": 80,
+    "targetBpm": 160,
+    "bars": [
+      {
+        "ride": "x - x x x - x x",
+        "hihat": "- - x - - - x -"
+      }
+    ]
+  },
+  {
+    "id": "jazz_feather",
+    "kind": "groove",
+    "style": "jazz",
+    "level": 2,
+    "name": "Ride with feathered kick",
+    "nameHe": "רייד עם קיק \"נוצה\"",
+    "tip": "קיק חלש מאוד על כל רבע – מרגישים אותו יותר משומעים.",
+    "subdivision": 2,
+    "swing": 66,
+    "startBpm": 80,
+    "targetBpm": 150,
+    "bars": [
+      {
+        "ride": "x - x x x - x x",
+        "hihat": "- - x - - - x -",
+        "kick": "g - g - g - g -"
+      }
+    ]
+  },
+  {
+    "id": "jazz_comping",
+    "kind": "groove",
+    "style": "jazz",
+    "level": 3,
+    "name": "Comping on the snare",
+    "nameHe": "קומפינג על הסנר",
+    "tip": "הסנר עונה לרייד: מכת רפאים על ה-& של 2 והדגשה על ה-& של 3.",
+    "subdivision": 2,
+    "swing": 66,
+    "startBpm": 80,
+    "targetBpm": 150,
+    "bars": [
+      {
+        "ride": "x - x x x - x x",
+        "hihat": "- - x - - - x -",
+        "snare": "- - - g - x - -"
+      }
+    ]
+  },
+  {
+    "id": "jazz_waltz",
+    "kind": "groove",
+    "style": "jazz",
+    "level": 4,
+    "name": "Jazz waltz",
+    "nameHe": "ג'אז וואלס",
+    "tip": "שלוש נקישות בתיבה; הרייד מוביל ואל תמהר את ה-1.",
+    "subdivision": 2,
+    "beatsPerBar": 3,
+    "swing": 66,
+    "startBpm": 90,
+    "targetBpm": 170,
+    "bars": [
+      {
+        "ride": "x - x x x -",
+        "hihat": "- - x - x -",
+        "kick": "g - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "blues_shuffle",
+    "kind": "groove",
+    "style": "blues",
+    "level": 2,
+    "name": "Blues shuffle",
+    "nameHe": "בלוז שאפל",
+    "tip": "טריולות בלי האמצעית: דאם-דה, דאם-דה. הסנר על 2 ו-4.",
+    "subdivision": 3,
+    "startBpm": 70,
+    "targetBpm": 130,
+    "bars": [
+      {
+        "hihat": "x - x x - x x - x x - x",
+        "snare": "- - - x - - - - - x - -",
+        "kick": "x - - - - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "motown",
+    "kind": "groove",
+    "style": "funk",
+    "level": 2,
+    "name": "Motown backbeat",
+    "nameHe": "מוטאון",
+    "tip": "הסנר על כל ארבע הנקישות – אחיד כמו מכונה, והקיק מניע.",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "x - x - x - x -",
+        "kick": "x - - x - x x -"
+      }
+    ]
+  },
+  {
+    "id": "hiphop_swing",
+    "kind": "groove",
+    "style": "funk",
+    "level": 3,
+    "name": "Hip-hop with swung 16ths",
+    "nameHe": "היפ-הופ עם שש-עשריות מסווינגות",
+    "tip": "השש-עשריות 'נגררות' קצת – נסה סווינג 55–60% ושמע את ההבדל.",
+    "subdivision": 4,
+    "swing": 58,
+    "startBpm": 75,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - x - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "purdie_shuffle",
+    "kind": "groove",
+    "style": "funk",
+    "level": 5,
+    "name": "Half-time shuffle with ghosts",
+    "nameHe": "שאפל חצי-זמן עם מכות רפאים",
+    "tip": "שאפל בחצי זמן: הסנר על 3 בלבד, ומכות רפאים ממלאות את הטריולות.",
+    "subdivision": 3,
+    "startBpm": 60,
+    "targetBpm": 95,
+    "bars": [
+      {
+        "hihat": "x - x x - x x - x x - x",
+        "snare": "- g - - g - X - g - - g",
+        "kick": "x - - - - x - - - x - -"
+      }
+    ]
+  },
+  {
+    "id": "bossa_nova",
+    "kind": "groove",
+    "style": "latin",
+    "level": 1,
+    "name": "Bossa nova",
+    "nameHe": "בוסה נובה",
+    "tip": "הקיק דוהר כמו לב: 1, ה-& של 2, 3, ה-& של 4. הסנר מנגן את הקלאווה על הרים.",
+    "subdivision": 2,
+    "startBpm": 90,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "ride": "x x x x x x x x",
+        "kick": "x - - x x - - x",
+        "snare": "x - - x - - x -"
+      },
+      {
+        "ride": "x x x x x x x x",
+        "kick": "x - - x x - - x",
+        "snare": "- - x - - x - -"
+      }
+    ]
+  },
+  {
+    "id": "clave_32",
+    "kind": "groove",
+    "style": "latin",
+    "level": 2,
+    "name": "Son clave 3-2",
+    "nameHe": "קלאווה 3-2",
+    "tip": "שלוש מכות בתיבה הראשונה, שתיים בשנייה; ההיי-האט ברגל על כל רבע.",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 130,
+    "bars": [
+      {
+        "snare": "x - - x - - x -",
+        "hihat": "x - x - x - x -"
+      },
+      {
+        "snare": "- - x - x - - -",
+        "hihat": "x - x - x - x -"
+      }
+    ]
+  },
+  {
+    "id": "clave_23",
+    "kind": "groove",
+    "style": "latin",
+    "level": 2,
+    "name": "Son clave 2-3",
+    "nameHe": "קלאווה 2-3",
+    "tip": "אותה קלאווה מהצד השני – מתחילים בתיבה של השתיים.",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 130,
+    "bars": [
+      {
+        "snare": "- - x - x - - -",
+        "hihat": "x - x - x - x -"
+      },
+      {
+        "snare": "x - - x - - x -",
+        "hihat": "x - x - x - x -"
+      }
+    ]
+  },
+  {
+    "id": "samba",
+    "kind": "groove",
+    "style": "latin",
+    "level": 3,
+    "name": "Samba",
+    "nameHe": "סאמבה",
+    "tip": "הקיק על 1 וה-a, 2 וה-a – כמו הסורדו; ההיי-האט בשש-עשריות עם הדגשה.",
+    "subdivision": 4,
+    "startBpm": 70,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "hihat": "X x x x X x x x X x x x X x x x",
+        "kick": "x - - x x - - x x - - x x - - x",
+        "snare": "x - - x - - x - - - x - - x - -"
+      }
+    ]
+  },
+  {
+    "id": "songo",
+    "kind": "groove",
+    "style": "latin",
+    "level": 4,
+    "name": "Songo",
+    "nameHe": "סונגו",
+    "tip": "הקיק על ה-a של 1 ושל 3; הסנר מתווכח עם הרייד.",
+    "subdivision": 4,
+    "startBpm": 70,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "ride": "x - - - x - - - x - - - x - - -",
+        "snare": "- - - - - - x - - x - - - x - -",
+        "kick": "- - - x - - - - - - - x - - - -"
+      }
+    ]
+  },
+  {
+    "id": "maqsum",
+    "kind": "groove",
+    "style": "mideast",
+    "level": 1,
+    "name": "Maqsum",
+    "nameHe": "מקסום",
+    "tip": "דום-תק, תק, דום, תק: הקצב הבסיסי של המוזיקה המזרחית. (מעובד למערכת: דום בקיק, תק בסנר)",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "kick": "x - - - x - - -",
+        "snare": "- x - x - - x -",
+        "hihat": "x x x x x x x x"
+      }
+    ]
+  },
+  {
+    "id": "baladi",
+    "kind": "groove",
+    "style": "mideast",
+    "level": 2,
+    "name": "Baladi",
+    "nameHe": "בלדי",
+    "tip": "שני דום בהתחלה נותנים לו משקל כבד. (מעובד למערכת: דום בקיק, תק בסנר)",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "kick": "x x - - x - - -",
+        "snare": "- - - x - - x -",
+        "hihat": "x x x x x x x x"
+      }
+    ]
+  },
+  {
+    "id": "saidi",
+    "kind": "groove",
+    "style": "mideast",
+    "level": 3,
+    "name": "Saidi",
+    "nameHe": "סעידי",
+    "tip": "שני הדום באמצע – הקצב של ריקודי המקל מהדרום. (מעובד למערכת: דום בקיק, תק בסנר)",
+    "subdivision": 2,
+    "startBpm": 80,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "kick": "x - - x x - - -",
+        "snare": "- x - - - - x -",
+        "hihat": "x x x x x x x x"
+      }
+    ]
+  },
+  {
+    "id": "masmoudi",
+    "kind": "groove",
+    "style": "mideast",
+    "level": 4,
+    "name": "Masmoudi kabir",
+    "nameHe": "מצמודי",
+    "tip": "מקצב של שמונה רבעים, איטי ורחב: דום, דום, (שקט), תק, דום, (שקט), תק, (שקט). (מעובד למערכת)",
+    "subdivision": 2,
+    "startBpm": 70,
+    "targetBpm": 120,
+    "bars": [
+      {
+        "kick": "x - x - - - - -",
+        "snare": "- - - - - - x -",
+        "hihat": "x x x x x x x x"
+      },
+      {
+        "kick": "x - - - - - - -",
+        "snare": "- - - - x - - -",
+        "hihat": "x x x x x x x x"
+      }
+    ]
+  },
+  {
+    "id": "dnb",
+    "kind": "groove",
+    "style": "electronic",
+    "level": 1,
+    "name": "Drum & bass two-step",
+    "nameHe": "דראם אנד בייס",
+    "tip": "מהיר אבל קל: קיק על 1 וה-& של 3, סנר על 2 ו-4. הטמפו הוא האתגר.",
+    "subdivision": 4,
+    "startBpm": 120,
+    "targetBpm": 170,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "one_drop",
+    "kind": "groove",
+    "style": "electronic",
+    "level": 2,
+    "name": "Reggae one-drop",
+    "nameHe": "רגאיי וואן-דרופ",
+    "tip": "ה-1 ריק! הקיק והסנר נוחתים יחד רק על 3.",
+    "subdivision": 2,
+    "swing": 60,
+    "startBpm": 70,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "kick": "- - - - x - - -",
+        "snare": "- - - - x - - -"
+      }
+    ]
+  },
+  {
+    "id": "five_four",
+    "kind": "groove",
+    "style": "electronic",
+    "level": 3,
+    "name": "Groove in 5/4",
+    "nameHe": "גרוב ב-5/4",
+    "tip": "חמש נקישות בחלוקה 3+2: קיק בתחילת כל קבוצה.",
+    "subdivision": 2,
+    "beatsPerBar": 5,
+    "beatGroups": [
+      3,
+      2
+    ],
+    "startBpm": 80,
+    "targetBpm": 140,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x x x",
+        "kick": "x - - - - - x - - -",
+        "snare": "- - - - x - - - x -"
+      }
+    ]
+  },
+  {
+    "id": "seven_eight",
+    "kind": "groove",
+    "style": "electronic",
+    "level": 4,
+    "name": "Groove in 7/8",
+    "nameHe": "גרוב ב-7/8",
+    "tip": "שבע שמיניות בחלוקה 2+2+3. הטמפו נמדד בשמיניות; ספור 1-2, 1-2, 1-2-3.",
+    "subdivision": 1,
+    "beatsPerBar": 7,
+    "beatUnit": 8,
+    "beatGroups": [
+      2,
+      2,
+      3
+    ],
+    "startBpm": 150,
+    "targetBpm": 240,
+    "bars": [
+      {
+        "hihat": "x x x x x x x",
+        "kick": "x - - - x - -",
+        "snare": "- - x - - - x"
+      }
+    ]
+  }
+]

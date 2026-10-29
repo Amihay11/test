@@ -31,7 +31,20 @@ data class Exercise(
     val targetBpm: Int,
     val passStdMs: Double,
     val passHitPct: Double,
+    /**
+     * Default swing for patterns that can swing, as the share (%) of each pair of grid
+     * steps taken by its first step: 50 = straight, 66 = triplet swing. Null = straight only.
+     */
+    val swing: Int? = null,
+    /** Beats grouped for accents and beaming, e.g. [2, 2, 3] for 7/8. Null = one group per bar. */
+    val beatGroups: List<Int>? = null,
+    /** Note value of one metronome beat: 4 (quarter) or 8 (eighth, for x/8 meters). */
+    val beatUnit: Int = 4,
 ) {
+    /** Beats that start a group and get an accented click. */
+    val accentBeats: Set<Int>
+        get() = beatGroups?.runningFold(0) { acc, g -> acc + g }?.dropLast(1)?.toSet() ?: setOf(0)
+
     val stepsPerBar: Int get() = subdivision * beatsPerBar
 
     /** Bars in one cycle of the pattern (a rudiment shorter than a bar still counts as one). */
@@ -138,6 +151,10 @@ object ExerciseParser {
             targetBpm = o.getInt("targetBpm"),
             passStdMs = o.optDouble("passStdMs", defaultStd),
             passHitPct = o.optDouble("passHitPct", 90.0),
+            swing = if (o.has("swing")) o.getInt("swing") else null,
+            beatGroups = o.optJSONArray("beatGroups")?.let { a -> List(a.length()) { a.getInt(it) } }
+                ?.also { require(it.sum() == beatsPerBar) { "$id: beat groups do not add up to the bar" } },
+            beatUnit = o.optInt("beatUnit", 4),
         )
     }
 }

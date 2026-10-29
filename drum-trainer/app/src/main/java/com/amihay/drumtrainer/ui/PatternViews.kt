@@ -107,11 +107,14 @@ fun ExerciseGrid(
                     }
                 }
             }
+            val groupStarts = exercise.accentBeats
             for (s in 0..steps) {
                 val x = labelW + s * cellW
                 val isBeat = s % exercise.subdivision == 0
+                // Odd meters: thicker lines where a beat group (2+2+3…) starts.
+                val isGroup = isBeat && exercise.beatGroups != null && (s / exercise.subdivision) % exercise.beatsPerBar in groupStarts
                 drawLine(lineColor.copy(alpha = if (isBeat) 0.8f else 0.25f), Offset(x, top), Offset(x, size.height),
-                    strokeWidth = if (isBeat) 3f else 1f)
+                    strokeWidth = if (isGroup) 6f else if (isBeat) 3f else 1f)
             }
             drawCursor(cursorStep, labelW, cellW, top)
         }
@@ -177,7 +180,13 @@ fun NotationView(
             }
 
             fun stepX(s: Int) = left + (s + 0.5f) * cellW
-            val beams = when (exercise.subdivision) { 1 -> 0; 2, 3 -> 1; else -> 2 }
+            // Beams per beat; x/8 meters count eighths, so one beam more and beamed by group.
+            val beams = when (exercise.subdivision) { 1 -> 0; 2, 3 -> 1; else -> 2 } + if (exercise.beatUnit == 8) 1 else 0
+            val beamRanges: List<IntRange> = exercise.beatGroups?.takeIf { exercise.beatUnit == 8 }?.let { groups ->
+                groups.runningFold(0) { acc, g -> acc + g }.zipWithNext { a, b ->
+                    (a * exercise.subdivision) until (b * exercise.subdivision)
+                }
+            } ?: (0 until exercise.beatsPerBar).map { b -> (b * exercise.subdivision) until ((b + 1) * exercise.subdivision) }
 
             // Two voices: hands (stems up) and feet (stems down).
             for (down in listOf(false, true)) {
@@ -205,8 +214,8 @@ fun NotationView(
                     }
                 }
                 // Beams (or flags) per beat.
-                for (beat in 0 until exercise.beatsPerBar) {
-                    val inBeat = stemSteps.filter { it / exercise.subdivision == beat }
+                for ((beat, range) in beamRanges.withIndex()) {
+                    val inBeat = stemSteps.filter { it in range }
                     if (inBeat.isEmpty() || beams == 0) continue
                     val dx = if (down) -gap * 0.55f else gap * 0.55f
                     for (b in 0 until beams) {
@@ -221,7 +230,7 @@ fun NotationView(
                     if (exercise.subdivision == 3 || exercise.subdivision == 6) {
                         val label = exercise.subdivision.toString()
                         val t = measurer.ltr(label, TextStyle(color = muted, fontSize = 11.sp))
-                        val cx = (stepX(beat * exercise.subdivision) + stepX(beat * exercise.subdivision + exercise.subdivision - 1)) / 2
+                        val cx = (stepX(range.first) + stepX(range.last)) / 2
                         val ty = if (down) stemEnd + 4 else stemEnd - t.size.height - 14.dp.toPx()
                         drawText(t, topLeft = Offset(cx - t.size.width / 2, ty))
                     }

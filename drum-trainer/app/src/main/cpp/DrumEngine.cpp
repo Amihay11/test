@@ -181,6 +181,21 @@ void DrumEngine::clearClicks() {
     }
 }
 
+void DrumEngine::setBacking(const std::vector<backing::Note> &notes, int loopFrames) {
+    std::vector<float> rendered = backing::render(notes, loopFrames, sampleRate_);
+    clearClicks();
+    // Silence any voice still playing the old loop before its buffer is replaced.
+    dropBacking_.store(true, std::memory_order_release);
+    if (running_.load()) {
+        uint64_t seen = callbackCount_.load();
+        for (int i = 0; i < 200 && callbackCount_.load() < seen + 2; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+    clickSounds_[kBackingSound] = std::move(rendered);
+    dropBacking_.store(false, std::memory_order_release);
+}
+
 void DrumEngine::setSensitivity(float s) { pendingSensitivity_.store(s); }
 
 void DrumEngine::setNotchEnabled(bool enabled) { pendingNotch_.store(enabled); }
@@ -219,6 +234,11 @@ void DrumEngine::renderClicks(float *out, int32_t numFrames, int64_t firstFrame)
             slot->sound = &sound;
             slot->startFrame = c.frame;
             slot->gain = c.gain;
+        }
+    }
+    if (dropBacking_.load(std::memory_order_acquire)) {
+        for (auto &v : voices_) {
+            if (v.sound == &clickSounds_[kBackingSound]) v.sound = nullptr;
         }
     }
     for (auto &v : voices_) {

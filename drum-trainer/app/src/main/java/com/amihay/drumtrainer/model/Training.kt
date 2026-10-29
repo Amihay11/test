@@ -77,6 +77,11 @@ data class SessionPlan(val parts: List<SessionPart>) {
  * in-progress rudiment, a gap-metronome step, a groove and a fill, and free play.
  */
 object SessionPlanner {
+    /** Order in which the styles are taught (spec: rock first, odd meters last). */
+    val STYLE_ORDER = listOf("rock", "funk", "jazz", "blues", "latin", "mideast", "electronic")
+
+    fun styleRank(style: String?): Int = STYLE_ORDER.indexOf(style).let { if (it < 0) STYLE_ORDER.size else it }
+
     const val REVIEW_FACTOR = 0.9
     /** Mastered exercises come back for review when they have rested this long. */
     const val REVIEW_AFTER_DAYS = 14
@@ -149,12 +154,14 @@ object SessionPlanner {
             }
         } ?: SessionItem(null, GapSetup.LADDER.first(), 70, "התחלה: 2 תיבות עם קליק, 2 בלי")
 
-        // 4. Groove and fill: the next groove (independence first at each level) and fill
-        //    that are not mastered yet.
-        val kindOrder = listOf(ExerciseKind.INDEPENDENCE, ExerciseKind.GROOVE)
-        val grooves = exercises.filter { it.kind in kindOrder }
-            .sortedWith(compareBy({ it.level }, { kindOrder.indexOf(it.kind) }, { it.style ?: "" }))
-        val groove = grooves.firstOrNull { it.id !in mastered } ?: grooves.lastOrNull()
+        // 4. Groove and fill: the next unmastered groove, style by style through the
+        //    curriculum, with independence exercises first while their level is not above it.
+        val grooves = exercises.filter { it.kind == ExerciseKind.GROOVE }
+            .sortedWith(compareBy({ styleRank(it.style) }, { it.level }))
+        val nextGroove = grooves.firstOrNull { it.id !in mastered }
+        val independence = exercises.filter { it.kind == ExerciseKind.INDEPENDENCE }.sortedBy { it.level }
+            .firstOrNull { it.id !in mastered && it.level <= (nextGroove?.level ?: Int.MAX_VALUE) }
+        val groove = independence ?: nextGroove ?: grooves.lastOrNull()
         val fill = exercises.filter { it.kind == ExerciseKind.FILL }.sortedBy { it.level }
             .let { fills -> fills.firstOrNull { it.id !in mastered } ?: fills.lastOrNull() }
         val grooveItems = listOfNotNull(
@@ -207,17 +214,22 @@ object SessionReview {
     }
 }
 
-/** How steady free playing was: every hit compared with the nearest 16th-note position. */
+/**
+ * How steady free playing was: every hit compared with the nearest grid position,
+ * either a straight 16th or an 8th-note triplet (so swing and shuffle count as on time).
+ */
 object FreePlayStats {
     data class Summary(val hits: Int, val onGridPct: Double, val meanMs: Double, val stdMs: Double)
 
     fun summarize(onsets: List<Onset>, plan: RoundPlan): Summary {
-        val grid = plan.framesPerBeat / 4
-        val window = grid / 4
+        val grids = listOf(plan.framesPerBeat / 4, plan.framesPerBeat / 3)
+        val window = grids.first() / 4
         val devs = onsets.filter { it.frame >= plan.firstNoteFrame - window && it.frame <= plan.endFrame + window }
             .map { o ->
-                val pos = (o.frame - plan.firstNoteFrame) / grid
-                (pos - Math.round(pos)) * grid
+                grids.map { grid ->
+                    val pos = (o.frame - plan.firstNoteFrame) / grid
+                    (pos - Math.round(pos)) * grid
+                }.minBy { kotlin.math.abs(it) }
             }
         if (devs.isEmpty()) return Summary(0, 0.0, 0.0, 0.0)
         val ms = devs.map { plan.framesToMs(it) }
