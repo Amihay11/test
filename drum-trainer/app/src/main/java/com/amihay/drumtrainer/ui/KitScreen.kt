@@ -109,7 +109,7 @@ fun KitScreen(app: AppState) {
                         "השאר רווח קטן בין המכות.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Text("${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium)
+                Text("$LRM${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     repeat(HITS_PER_PAD) { i ->
                         Box(Modifier.size(18.dp).background(if (i < recorded.size) Palette.good else Palette.pending, CircleShape))
@@ -200,7 +200,7 @@ fun KitScreen(app: AppState) {
             }
             target?.let { t ->
                 val pct = if (attempts > 0) " (${100 * correct / attempts}%)" else ""
-                Text("${t.he}: $correct / $attempts זוהו נכון$pct", style = MaterialTheme.typography.titleLarge,
+                Text("${t.he}: $LRM$correct / $attempts$LRM זוהו נכון$pct", style = MaterialTheme.typography.titleLarge,
                     color = if (attempts > 0 && correct * 10 >= attempts * 9) Palette.good else MaterialTheme.colorScheme.onSurface)
             }
         }
