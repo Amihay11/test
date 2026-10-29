@@ -29,9 +29,9 @@ class AppState(context: Context) {
     val engine = AudioEngine()
     val settings = Settings(context)
     val dao = AppDatabase.get(context).dao()
-    val exercises: List<Exercise> = ExerciseParser.parse(
-        context.assets.open("exercises/rudiments.json").bufferedReader().use { it.readText() },
-    )
+    val exercises: List<Exercise> = listOf("rudiments", "grooves").flatMap { name ->
+        ExerciseParser.parse(context.assets.open("exercises/$name.json").bufferedReader().use { it.readText() })
+    }
 
     private val padStore = PadStore(File(context.filesDir, "pads.json"))
 

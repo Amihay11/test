@@ -35,7 +35,8 @@ import com.amihay.drumtrainer.data.ProgressEntity
 import com.amihay.drumtrainer.data.RunEntity
 import com.amihay.drumtrainer.model.Exercise
 import com.amihay.drumtrainer.model.MatchResult
-import com.amihay.drumtrainer.model.Matcher
+import com.amihay.drumtrainer.model.ExpectedNote
+import com.amihay.drumtrainer.model.Scoring
 import com.amihay.drumtrainer.model.Progress
 import com.amihay.drumtrainer.model.RoundPlan
 import com.amihay.drumtrainer.model.RoundPlanner
@@ -68,6 +69,9 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
     var bpm by remember { mutableIntStateOf(ex.startBpm) }
     var plan by remember { mutableStateOf<RoundPlan?>(null) }
     var match by remember { mutableStateOf<MatchResult?>(null) }
+    var notes by remember { mutableStateOf<List<ExpectedNote>>(emptyList()) }
+    // Judge the drums only when every drum in the exercise has been learned.
+    val padAware = Scoring.padAware(ex, app.classifier.pads)
     var outcome by remember { mutableStateOf<Outcome?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
 
@@ -78,13 +82,16 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 
     fun startRound() {
         val p = RoundPlanner.forExercise(
-            ex, bpm, app.settings.barsPerRound, app.engine.scheduleStartFrame(), app.engine.sampleRate,
+            ex, bpm, ex.roundBars(app.settings.barsPerRound), app.engine.scheduleStartFrame(), app.engine.sampleRate,
         )
+        val aware = padAware
         plan = p
+        notes = Scoring.notes(p, aware)
         phase = Phase.RUNNING
         job = scope.launch {
-            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs)
-            match = Matcher.match(p.notes, runner.onsets.toList(), p.windowFrames, p.sampleRate)
+            runner.run(p.clicks, p.endFrame, app.settings.effectiveOffsetMs,
+                classifier = if (aware) app.classifier else null)
+            match = Scoring.match(notes, runner.onsets.toList(), p, aware)
             phase = Phase.RATING
         }
     }
@@ -100,7 +107,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
             val (after, tempoUp) = SpeedTrainer.afterRound(before, bpm, passed)
             val runId = app.dao.insertRun(
                 RunEntity(
-                    exerciseId = ex.id, mode = "rudiment", bpm = bpm, startedAt = System.currentTimeMillis(),
+                    exerciseId = ex.id, mode = ex.kind.name.lowercase(), bpm = bpm, startedAt = System.currentTimeMillis(),
                     bars = p.bars, expected = stats.expected, hits = stats.hits, misses = stats.misses,
                     extras = stats.extras, meanMs = stats.meanMs, stdMs = stats.stdMs, hitPct = stats.hitPct,
                     accentDb = stats.accentDb, selfRating = rating, passed = passed,
@@ -109,9 +116,11 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
             app.dao.insertHits(
                 m.notes.map {
                     HitEntity(runId = runId, noteIndex = it.note.index, hand = it.note.hand.toString(),
-                        accent = it.note.accent, deviationMs = it.deviationMs, strength = it.onset?.strength)
-                } + m.extras.map {
-                    HitEntity(runId = runId, noteIndex = null, hand = "-", accent = false, deviationMs = null, strength = it.strength)
+                        accent = it.note.accent, deviationMs = it.deviationMs, strength = it.onset?.strength,
+                        pad = it.note.pad?.id)
+                } + (m.extras + m.wrongDrum).map {
+                    HitEntity(runId = runId, noteIndex = null, hand = "-", accent = false, deviationMs = null,
+                        strength = it.strength, pad = it.pads?.firstOrNull()?.id)
                 },
             )
             app.dao.saveProgress(ProgressEntity(ex.id, after.currentBpm, after.consecutivePasses, after.bestPassedBpm))
@@ -139,19 +148,25 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 
         when (phase) {
             Phase.SETUP -> {
-                StickingGrid(ex, bar = 0, states = emptyMap(), cursorStep = null)
+                if (ex.usesPads && !padAware) {
+                    val missing = (ex.pads - app.classifier.pads).sortedBy { it.ordinal }.joinToString(", ") { it.he }
+                    Banner("לא נלמדו: $missing. בסבב הזה נמדד רק התזמון – כדי לבדוק גם את התופים, למד אותם ב'ערכת תופים'.",
+                        Palette.off) { app.screen = Screen.Kit }
+                }
+                for (b in 0 until ex.cycleBars) PatternView(app, ex, b, emptyMap(), null)
+                ViewToggle(app)
                 BpmStepper(bpm, { bpm = it })
                 Text(
                     "יעד: ${ex.targetBpm} BPM · מעבר: סטיית תקן עד ${ex.passStdMs.roundToInt()}ms ו-${ex.passHitPct.roundToInt()}% פגיעות",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                 )
                 Button(onClick = ::startRound, modifier = Modifier.fillMaxWidth()) {
-                    Text("התחל סבב (${app.settings.barsPerRound} תיבות)", style = MaterialTheme.typography.titleLarge)
+                    Text("התחל סבב (${ex.roundBars(app.settings.barsPerRound)} תיבות)", style = MaterialTheme.typography.titleLarge)
                 }
             }
 
             Phase.RUNNING -> plan?.let { p ->
-                LiveRound(ex, p, runner)
+                LiveRound(app, ex, p, notes, padAware, runner)
                 FilledTonalButton(onClick = {
                     job?.cancel()
                     phase = Phase.SETUP
@@ -172,19 +187,24 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 }
 
 @Composable
-private fun LiveRound(ex: Exercise, p: RoundPlan, runner: RoundRunner) {
+private fun LiveRound(app: AppState, ex: Exercise, p: RoundPlan, notes: List<ExpectedNote>, padAware: Boolean, runner: RoundRunner) {
     val playhead = runner.playhead
     val beat = p.beatAt(playhead)
     // Hits arrive ~50-100 ms after they sound (detection + feature window); don't call a
     // note missed before then.
     val upTo = playhead - p.msToFrames(150.0)
-    val live = Matcher.match(p.notes, runner.onsets, p.windowFrames, p.sampleRate, upToFrame = upTo)
+    val live = Scoring.match(notes, runner.onsets, p, padAware, upToFrame = upTo)
     val bar = floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1)
-    val states = HashMap<Int, StepState>()
+    val states = HashMap<CellKey, StepState>()
     var lastHit: Double? = null
     live.notes.forEach { r ->
-        if (r.note.bar == bar) states[r.note.stepInBar] = stepState(r, r.note.frame + p.windowFrames <= upTo)
+        if (r.note.bar == bar) states[r.note.stepInBar to noteRowKey(r.note)] = stepState(r, r.note.frame + p.windowFrames <= upTo)
         if (r.deviationMs != null) lastHit = r.deviationMs
+    }
+    // A hit on the wrong drum colours the notes it should have been.
+    for (w in live.wrongDrum) {
+        val near = live.notes.filter { it.note.bar == bar && !it.hit && abs(it.note.frame - w.frame) <= p.windowFrames }
+        near.forEach { states[it.note.stepInBar to noteRowKey(it.note)] = StepState.WRONG }
     }
 
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -193,13 +213,13 @@ private fun LiveRound(ex: Exercise, p: RoundPlan, runner: RoundRunner) {
                 style = MaterialTheme.typography.displayLarge)
         } else {
             Text(
-                "תיבה ${bar + 1} / ${p.bars}",
+                "תיבה ${bar + 1} / ${p.bars}" + if (ex.isFillBar(bar)) " · FILL" else "",
                 style = MaterialTheme.typography.headlineMedium,
             )
         }
     }
     val cursor = if (beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null
-    StickingGrid(ex, bar, states, cursor)
+    PatternView(app, ex, bar, states, cursor)
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         val lh = lastHit
         StatTile(
@@ -211,7 +231,30 @@ private fun LiveRound(ex: Exercise, p: RoundPlan, runner: RoundRunner) {
                 else -> Palette.off
             },
         )
+        if (padAware) {
+            StatTile("תוף שגוי", "${live.wrongDrum.size}", color = if (live.wrongDrum.isEmpty()) Palette.muted else Palette.wrong)
+        }
         StatTile("מכות מיותרות", "${live.extras.size}", color = if (live.extras.isEmpty()) Palette.muted else Palette.bad)
+    }
+}
+
+/** Grid row of a note: its drum, its hand (rudiments), or every row (timing-only notes). */
+private fun noteRowKey(n: ExpectedNote): String = when {
+    n.pad != null -> n.pad.id
+    n.hand == 'R' || n.hand == 'L' -> n.hand.toString()
+    else -> ANY_ROW
+}
+
+/** The bar as a step grid or in drum notation, as chosen in [ViewToggle]. */
+@Composable
+fun PatternView(app: AppState, ex: Exercise, bar: Int, states: Map<CellKey, StepState>, cursor: Double?) {
+    if (app.settings.notation) NotationView(ex, bar, states, cursor) else ExerciseGrid(ex, bar, states, cursor)
+}
+
+@Composable
+fun ViewToggle(app: AppState) {
+    OutlinedButton(onClick = { app.settings.updateNotation(!app.settings.notation) }) {
+        Text(if (app.settings.notation) "הצג כרשת" else "הצג בתווים")
     }
 }
 
@@ -258,6 +301,7 @@ private fun RoundResults(ex: Exercise, o: Outcome) {
         StatTile("פגיעות", "${s.hitPct.roundToInt()}%",
             color = if (s.hitPct >= ex.passHitPct) Palette.good else Palette.off, sub = "${s.hits}/${s.expected}")
         StatTile("מכות מיותרות", "${s.extras}", color = if (s.extras == 0) Palette.good else Palette.bad)
+        if (ex.usesPads) StatTile("תוף שגוי", "${s.wrongDrum}", color = if (s.wrongDrum == 0) Palette.good else Palette.wrong)
         s.accentDb?.let { StatTile("הדגשה מול רגיל", "${fmt1(it)}dB", sub = "כמה ההדגשה חזקה יותר") }
     }
     if (s.perHand.size > 1) {
@@ -266,6 +310,27 @@ private fun RoundResults(ex: Exercise, o: Outcome) {
             s.perHand.toSortedMap(compareByDescending { it == 'R' }).forEach { (hand, sp) ->
                 StatTile(if (hand == 'R') "יד ימין" else "יד שמאל", "${fmt1(sp.stdMs)}ms",
                     sub = "ממוצע ${fmtMs(sp.meanMs)}ms (${earlyLate(sp.meanMs)})")
+            }
+        }
+    }
+    if (s.landing.n > 0) {
+        Text("מילוי ונחיתה", style = MaterialTheme.typography.titleLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            StatTile("נחיתה על ה-1", "${fmtMs(s.landing.meanMs)}ms", sub = earlyLate(s.landing.meanMs),
+                color = if (abs(s.landing.meanMs) <= ex.passStdMs * 1.5) Palette.good else Palette.off)
+            if (s.fill.n > 0) StatTile("בתוך המילוי", "${fmtMs(s.fill.meanMs)}ms", sub = "פיזור ${fmt1(s.fill.stdMs)}ms")
+            if (s.groove.n > 0) StatTile("בגרוב", "${fmtMs(s.groove.meanMs)}ms", sub = "פיזור ${fmt1(s.groove.stdMs)}ms")
+        }
+        if (s.fill.n > 0 && s.fill.meanMs < s.groove.meanMs - 5) {
+            Text("במילוי אתה מקדים ביחס לגרוב – נסה לחשוב על המילוי כהמשך של אותו קצב.",
+                style = MaterialTheme.typography.bodyLarge, color = Palette.off)
+        }
+    }
+    if (s.perPad.size > 1) {
+        Text("לפי תוף", style = MaterialTheme.typography.titleLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            s.perPad.toSortedMap(compareBy { it.ordinal }).forEach { (pad, sp) ->
+                StatTile(pad.he, "${fmt1(sp.stdMs)}ms", sub = "ממוצע ${fmtMs(sp.meanMs)}ms (${earlyLate(sp.meanMs)})")
             }
         }
     }

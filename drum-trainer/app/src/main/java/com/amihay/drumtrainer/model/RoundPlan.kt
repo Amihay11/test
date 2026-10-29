@@ -19,6 +19,13 @@ data class ExpectedNote(
     val stepInBar: Int,
     /** Whether the metronome was audible during this note's bar. */
     val clickAudible: Boolean = true,
+    /** Drum to play; null when any pad will do (rudiments, gap metronome). */
+    val pad: Pad? = null,
+    val ghost: Boolean = false,
+    /** Part of a fill bar. */
+    val inFill: Boolean = false,
+    /** The downbeat right after a fill: where beginners tend to rush. */
+    val landing: Boolean = false,
 )
 
 data class RoundPlan(
@@ -57,22 +64,34 @@ object RoundPlanner {
         val countIn = ex.beatsPerBar
         val first = startFrame + countIn * framesPerBeat
         val notes = ArrayList<ExpectedNote>()
-        for (step in 0 until bars * ex.stepsPerBar) {
-            val stroke = ex.strokeAt(step) ?: continue
-            notes += ExpectedNote(
-                index = notes.size,
-                frame = first + step * framesPerStep,
-                hand = stroke.hand,
-                accent = stroke.accent,
-                bar = step / ex.stepsPerBar,
-                stepInBar = step % ex.stepsPerBar,
-            )
+        // Fill exercises end on the downbeat after the last fill, so every fill has a landing.
+        val endsOnLanding = ex.kind == ExerciseKind.FILL && ex.isFillBar(bars - 1)
+        val lastStep = bars * ex.stepsPerBar + (if (endsOnLanding) 1 else 0)
+        for (step in 0 until lastStep) {
+            val bar = step / ex.stepsPerBar
+            val stepInBar = step % ex.stepsPerBar
+            val landing = stepInBar == 0 && bar > 0 && ex.isFillBar(bar - 1)
+            for (stroke in ex.strokesAt(step)) {
+                notes += ExpectedNote(
+                    index = notes.size,
+                    frame = first + step * framesPerStep,
+                    hand = stroke.hand,
+                    accent = stroke.accent,
+                    bar = bar,
+                    stepInBar = stepInBar,
+                    pad = stroke.pad,
+                    ghost = stroke.ghost,
+                    inFill = ex.isFillBar(bar) && bar < bars,
+                    landing = landing,
+                )
+            }
         }
         val clickBars = List(bars) { true }
+        val clicks = clicks(startFrame, framesPerBeat, ex.beatsPerBar, countIn, clickBars).toMutableList()
+        if (endsOnLanding) clicks += Click((first + bars * ex.beatsPerBar * framesPerBeat).toLong(), ClickType.ACCENT)
         return RoundPlan(
             sampleRate, bpm.toDouble(), startFrame, framesPerBeat, framesPerStep, ex.beatsPerBar,
-            ex.stepsPerBar, countIn, bars, notes,
-            clicks(startFrame, framesPerBeat, ex.beatsPerBar, countIn, clickBars), clickBars,
+            ex.stepsPerBar, countIn, bars, notes, clicks, clickBars,
         )
     }
 

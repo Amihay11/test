@@ -4,8 +4,16 @@ import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.sqrt
 
-/** A detected hit, already corrected for latency and expressed on the output clock. */
-data class Onset(val frame: Double, val strength: Float, val features: HitFeatures? = null)
+/**
+ * A detected hit, already corrected for latency and expressed on the output clock.
+ * [pads] is what the classifier heard (empty = not recognised, null = not classified).
+ */
+data class Onset(
+    val frame: Double,
+    val strength: Float,
+    val features: HitFeatures? = null,
+    val pads: List<Pad>? = null,
+)
 
 data class NoteResult(val note: ExpectedNote, val onset: Onset?, val deviationMs: Double?) {
     val hit: Boolean get() = onset != null
@@ -16,6 +24,8 @@ data class MatchResult(
     val extras: List<Onset>,
     /** Notes whose window has fully passed (only these count as hit or miss). */
     val resolvedCount: Int,
+    /** Hits on time for some note, but on a drum the pattern does not have there. */
+    val wrongDrum: List<Onset> = emptyList(),
 )
 
 object Matcher {
@@ -89,6 +99,12 @@ data class RoundStats(
     val stdMs: Double,
     val hitPct: Double,
     val perHand: Map<Char, Spread>,
+    val perPad: Map<Pad, Spread>,
+    val wrongDrum: Int,
+    /** Notes inside fill bars, the rest (groove), and the downbeats right after fills. */
+    val fill: Spread,
+    val groove: Spread,
+    val landing: Spread,
     /** Accent loudness relative to normal strokes, in dB (null without both kinds). */
     val accentDb: Double?,
     /** Mean deviation per position inside the beat (index = step % subdivision). */
@@ -114,11 +130,14 @@ object Stats {
         val devs = hitNotes.map { it.deviationMs!! }
         val all = spread(devs)
 
-        val perHand = hitNotes.groupBy { it.note.hand }
+        val perHand = hitNotes.filter { it.note.hand != '-' }.groupBy { it.note.hand }
+            .mapValues { (_, v) -> spread(v.map { it.deviationMs!! }) }
+        val perPad = hitNotes.filter { it.note.pad != null }.groupBy { it.note.pad!! }
             .mapValues { (_, v) -> spread(v.map { it.deviationMs!! }) }
 
+        // Ghost notes are meant to be quiet: compare accents with ordinary strokes only.
         val accents = hitNotes.filter { it.note.accent }.map { it.onset!!.strength.toDouble() }
-        val normals = hitNotes.filter { !it.note.accent }.map { it.onset!!.strength.toDouble() }
+        val normals = hitNotes.filter { !it.note.accent && !it.note.ghost }.map { it.onset!!.strength.toDouble() }
         val accentDb = if (accents.isNotEmpty() && normals.isNotEmpty() && normals.average() > 0) {
             20 * log10(accents.average() / normals.average())
         } else null
@@ -143,18 +162,27 @@ object Stats {
             stdMs = all.stdMs,
             hitPct = if (resolved > 0) 100.0 * hitNotes.size / resolved else 0.0,
             perHand = perHand,
+            perPad = perPad,
+            wrongDrum = match.wrongDrum.size,
+            fill = spread(hitNotes.filter { it.note.inFill }.map { it.deviationMs!! }),
+            groove = spread(hitNotes.filter { !it.note.inFill && !it.note.landing }.map { it.deviationMs!! }),
+            landing = spread(hitNotes.filter { it.note.landing }.map { it.deviationMs!! }),
             accentDb = accentDb,
             byBeatPosition = byPos,
             histogram = hist,
         )
     }
 
-    /** Pass = steady enough, enough correct hits, and almost no stray hits. */
+    /**
+     * Pass = steady enough, enough correct hits, almost no stray or wrong-drum hits, and
+     * (for fills) landing on the downbeat without rushing or dragging.
+     */
     fun passes(stats: RoundStats, passStdMs: Double, passHitPct: Double): Boolean =
         stats.hits >= 4 &&
             stats.stdMs <= passStdMs &&
             stats.hitPct >= passHitPct &&
-            stats.extras <= maxOf(1, (stats.expected * 0.05).toInt())
+            stats.extras + stats.wrongDrum <= maxOf(1, (stats.expected * 0.05).toInt()) &&
+            (stats.landing.n == 0 || abs(stats.landing.meanMs) <= passStdMs * 1.5)
 }
 
 data class SilentSegment(val startBar: Int, val bars: Int, val playedBpm: Double?, val meanMs: Double)

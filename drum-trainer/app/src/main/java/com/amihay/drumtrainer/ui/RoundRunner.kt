@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import com.amihay.drumtrainer.audio.AudioEngine
 import com.amihay.drumtrainer.model.Click
+import com.amihay.drumtrainer.model.DrumClassifier
 import com.amihay.drumtrainer.model.Onset
 
 /**
@@ -23,9 +24,13 @@ class RoundRunner(private val engine: AudioEngine) {
 
     /**
      * Runs until the playhead passes [endFrame] plus a tail that leaves time for the
-     * last hits to be detected. [offsetMs] is the calibrated latency.
+     * last hits to be detected. [offsetMs] is the calibrated latency. With a [classifier],
+     * each hit is also tagged with the drums it was recognised as.
      */
-    suspend fun run(clicks: List<Click>, endFrame: Double, offsetMs: Double, tailMs: Int = 400) {
+    suspend fun run(
+        clicks: List<Click>, endFrame: Double, offsetMs: Double, tailMs: Int = 400,
+        classifier: DrumClassifier? = null,
+    ) {
         onsets.clear()
         engine.pollOnsets(offsetMs)  // discard anything detected before the round
         engine.setClicks(clicks)
@@ -34,7 +39,10 @@ class RoundRunner(private val engine: AudioEngine) {
         try {
             while (true) {
                 withFrameNanos { }
-                val fresh = engine.pollOnsets(offsetMs)
+                val fresh = engine.pollOnsets(offsetMs).map { o ->
+                    if (classifier == null || o.features == null) o
+                    else o.copy(pads = classifier.classify(o.features).pads)
+                }
                 if (fresh.isNotEmpty()) onsets.addAll(fresh)
                 playhead = engine.playheadFrame().toDouble()
                 if (playhead > stopAt) break

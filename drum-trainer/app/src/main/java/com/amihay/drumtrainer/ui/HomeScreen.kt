@@ -25,6 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.amihay.drumtrainer.data.ProgressEntity
+import com.amihay.drumtrainer.model.Exercise
+import com.amihay.drumtrainer.model.ExerciseKind
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -75,32 +78,50 @@ fun HomeScreen(app: AppState) {
                 }
             }
         }
-        item { Text("רודימנטים", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp)) }
-        items(app.exercises, key = { it.id }) { ex ->
-            val p = byId[ex.id]
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    .clickable { app.screen = Screen.Practice(ex.id) }
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(ex.nameHe, style = MaterialTheme.typography.titleLarge)
-                    Text(ex.name, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("${p?.currentBpm ?: ex.startBpm} BPM", style = MaterialTheme.typography.titleMedium)
-                    val best = p?.bestPassedBpm ?: 0
-                    Text(
-                        if (best > 0) "שיא: $best · יעד: ${ex.targetBpm}" else "יעד: ${ex.targetBpm}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (best >= ex.targetBpm) Palette.good else Palette.muted,
-                    )
-                }
+        for ((title, list) in exerciseSections(app.exercises)) {
+            item(key = "title-$title") {
+                Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 8.dp))
             }
+            items(list, key = { it.id }) { ex -> ExerciseRow(app, ex, byId[ex.id]) }
         }
         item { Spacer(Modifier.padding(12.dp)) }
+    }
+}
+
+/** Home-screen sections, in the order of the curriculum. */
+private fun exerciseSections(all: List<Exercise>): List<Pair<String, List<Exercise>>> = listOf(
+    "רודימנטים" to all.filter { it.kind == ExerciseKind.RUDIMENT },
+    "עצמאות בין הגפיים" to all.filter { it.kind == ExerciseKind.INDEPENDENCE },
+    "גרובים – רוק" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "rock" },
+    "גרובים – פאנק" to all.filter { it.kind == ExerciseKind.GROOVE && it.style == "funk" },
+    "מעברים ומילויים" to all.filter { it.kind == ExerciseKind.FILL },
+).filter { it.second.isNotEmpty() }.map { (t, l) -> t to l.sortedBy { it.level } }
+
+@Composable
+private fun ExerciseRow(app: AppState, ex: Exercise, p: ProgressEntity?) {
+    Row(
+        Modifier.fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .clickable { app.screen = Screen.Practice(ex.id) }
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(ex.nameHe, style = MaterialTheme.typography.titleLarge)
+            Text(
+                ex.name + if (ex.kind != ExerciseKind.RUDIMENT) " · רמה ${ex.level}" else "",
+                style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text("${p?.currentBpm ?: ex.startBpm} BPM", style = MaterialTheme.typography.titleMedium)
+            val best = p?.bestPassedBpm ?: 0
+            Text(
+                if (best > 0) "שיא: $best · יעד: ${ex.targetBpm}" else "יעד: ${ex.targetBpm}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (best >= ex.targetBpm) Palette.good else Palette.muted,
+            )
+        }
     }
 }
 

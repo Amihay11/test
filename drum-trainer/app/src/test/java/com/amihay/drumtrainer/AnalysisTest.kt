@@ -1,6 +1,7 @@
 package com.amihay.drumtrainer
 
 import com.amihay.drumtrainer.model.CalibrationMath
+import com.amihay.drumtrainer.model.ExerciseKind
 import com.amihay.drumtrainer.model.ExerciseParser
 import com.amihay.drumtrainer.model.GapAnalysis
 import com.amihay.drumtrainer.model.Matcher
@@ -30,13 +31,14 @@ class AnalysisTest {
         assertEquals(10, ex.size)
         assertEquals(ex.size, ex.map { it.id }.toSet().size)
         val para = ex.first { it.id == "single_paradiddle" }
-        assertEquals(8, para.pattern.size)
-        assertTrue(para.pattern[0]!!.accent)
-        assertEquals('L', para.pattern[1]!!.hand)
+        assertEquals(8, para.steps.size)
+        assertTrue(para.steps[0].single().accent)
+        assertEquals('L', para.steps[1].single().hand)
         val five = ex.first { it.id == "five_stroke_roll" }
-        assertNull(five.pattern[5])
+        assertTrue(five.steps[5].isEmpty())
         // Every pattern must tile a whole number of beats.
-        for (e in ex) assertEquals(e.id, 0, e.pattern.size % e.subdivision)
+        for (e in ex) assertEquals(e.id, 0, e.steps.size % e.subdivision)
+        assertTrue(ex.all { it.kind == ExerciseKind.RUDIMENT && !it.usesPads })
     }
 
     @Test

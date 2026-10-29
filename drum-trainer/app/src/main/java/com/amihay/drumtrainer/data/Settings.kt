@@ -27,6 +27,10 @@ class Settings(context: Context) {
     var barsPerRound by mutableStateOf(prefs.getInt("barsPerRound", 4))
         private set
 
+    /** Show patterns in drum notation instead of the step grid. */
+    var notation by mutableStateOf(prefs.getBoolean("notation", false))
+        private set
+
     val isCalibrated: Boolean get() = !padOffsetMs.isNaN()
 
     /** Offset to use when the pad step has not been run yet. */
@@ -50,6 +54,11 @@ class Settings(context: Context) {
     fun updatePadOffset(ms: Double) {
         padOffsetMs = ms
         prefs.edit().putFloat("padOffsetMs", ms.toFloat()).apply()
+    }
+
+    fun updateNotation(on: Boolean) {
+        notation = on
+        prefs.edit().putBoolean("notation", on).apply()
     }
 
     fun updateBarsPerRound(bars: Int) {

@@ -13,6 +13,8 @@ object Palette {
     val good = Color(0xFF4CC38A)
     val off = Color(0xFFF2A33A)
     val bad = Color(0xFFE5534B)
+    /** Hit on time but on the wrong drum. */
+    val wrong = Color(0xFFB083F0)
     val pending = Color(0xFF3A3F4B)
     val accent = Color(0xFF6CB6FF)
     val muted = Color(0xFF9AA4B2)

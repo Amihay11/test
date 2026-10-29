@@ -1,0 +1,440 @@
+[
+  {
+    "id": "ind_kick_quarters",
+    "kind": "independence",
+    "level": 1,
+    "name": "Hi-hat 8ths, kick quarters",
+    "nameHe": "היי-האט שמיניות, קיק רבעים",
+    "tip": "יד ימין קבועה כמו מכונה; הרגל נוחתת יחד איתה על כל נקישה.",
+    "subdivision": 2,
+    "startBpm": 60,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "kick": "x - x - x - x -"
+      }
+    ]
+  },
+  {
+    "id": "ind_kick_offbeats",
+    "kind": "independence",
+    "level": 2,
+    "name": "Hi-hat 8ths, kick on the &",
+    "nameHe": "היי-האט שמיניות, קיק על ה-&",
+    "tip": "הקיק בין המכות של היד – אל תיתן ליד להאט כדי 'לחכות' לרגל.",
+    "subdivision": 2,
+    "startBpm": 60,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "kick": "- x - x - x - x"
+      }
+    ]
+  },
+  {
+    "id": "ind_kick_moves",
+    "kind": "independence",
+    "level": 3,
+    "name": "Backbeat with a moving kick",
+    "nameHe": "סנר על 2 ו-4, קיק זז",
+    "tip": "בכל תיבה הקיק במקום אחר; היד והסנר לא משתנים.",
+    "subdivision": 2,
+    "startBpm": 60,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - x x - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - x -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - x - - x -"
+      }
+    ]
+  },
+  {
+    "id": "ind_kick_eighths",
+    "kind": "independence",
+    "level": 4,
+    "name": "Hi-hat quarters, kick 8ths",
+    "nameHe": "היי-האט רבעים, קיק שמיניות",
+    "tip": "הפעם הרגל מהירה מהיד – שמור על הקיק שווה ואחיד.",
+    "subdivision": 2,
+    "startBpm": 50,
+    "targetBpm": 90,
+    "bars": [
+      {
+        "hihat": "x - x - x - x -",
+        "snare": "- - x - - - x -",
+        "kick": "x x x x x x x x"
+      }
+    ]
+  },
+  {
+    "id": "ind_sixteenth_kicks",
+    "kind": "independence",
+    "level": 5,
+    "name": "16th-note kick placements",
+    "nameHe": "קיק על שש-עשריות",
+    "tip": "ספור 1-e-&-a בקול; הקיק נוחת על ה-e וה-a בלי לגרור את היד.",
+    "subdivision": 4,
+    "startBpm": 55,
+    "targetBpm": 90,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - x - - - x - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "rock_1",
+    "kind": "groove",
+    "style": "rock",
+    "level": 1,
+    "name": "Basic rock beat",
+    "nameHe": "רוק בסיסי",
+    "tip": "קיק על 1 ו-3, סנר על 2 ו-4, היי-האט שמיניות.",
+    "subdivision": 2,
+    "startBpm": 70,
+    "targetBpm": 120,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      }
+    ]
+  },
+  {
+    "id": "rock_2",
+    "kind": "groove",
+    "style": "rock",
+    "level": 2,
+    "name": "Rock, kick on the & of 3",
+    "nameHe": "רוק עם קיק על ה-& של 3",
+    "tip": "שתי מכות קיק רצופות – השנייה נוטה להקדים.",
+    "subdivision": 2,
+    "startBpm": 70,
+    "targetBpm": 120,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x x - -"
+      }
+    ]
+  },
+  {
+    "id": "rock_3",
+    "kind": "groove",
+    "style": "rock",
+    "level": 3,
+    "name": "Rock with accented quarters",
+    "nameHe": "רוק עם הדגשה על הנקישות",
+    "tip": "היי-האט חזק על הנקישה וחלש ביניהן; קיק על ה-& של 2.",
+    "subdivision": 2,
+    "startBpm": 70,
+    "targetBpm": 120,
+    "bars": [
+      {
+        "hihat": "X x X x X x X x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - x x - - -"
+      }
+    ]
+  },
+  {
+    "id": "rock_4",
+    "kind": "groove",
+    "style": "rock",
+    "level": 4,
+    "name": "Rock with 16th kicks",
+    "nameHe": "רוק עם קיק בשש-עשריות",
+    "tip": "הקיק על ה-a של 2 מוביל אל 3 – בלי למהר אותו.",
+    "subdivision": 4,
+    "startBpm": 65,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - x x - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "rock_5",
+    "kind": "groove",
+    "style": "rock",
+    "level": 5,
+    "name": "Rock with ghost notes",
+    "nameHe": "רוק עם מכות רפאים",
+    "tip": "מכות הרפאים כמעט לא נשמעות – מקל נמוך, קרוב לעור.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 105,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - X - - g - g - - X - - g",
+        "kick": "x - - - - - - - x - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "funk_1",
+    "kind": "groove",
+    "style": "funk",
+    "level": 1,
+    "name": "Funk 16th hi-hat",
+    "nameHe": "פאנק עם היי-האט שש-עשריות",
+    "tip": "יד אחת על ההיי-האט ב-16 – אם זה מהיר מדי, הורד טמפו ולא תנועה.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x x x x x x x x x",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "funk_2",
+    "kind": "groove",
+    "style": "funk",
+    "level": 2,
+    "name": "Funk with syncopated kick",
+    "nameHe": "פאנק עם קיק מסונכרן",
+    "tip": "הקיק על ה-a של 1 ועל ה-& של 2 – ההיי-האט ממשיך בלי לעצור.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "X x x x X x x x X x x x X x x x",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - x - - x - - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "funk_3",
+    "kind": "groove",
+    "style": "funk",
+    "level": 3,
+    "name": "Funk with ghost notes",
+    "nameHe": "פאנק עם מכות רפאים",
+    "tip": "ההבדל בין מכת הדגשה לרפאים הוא הגרוב – בדוק את מדד ההדגשה בתוצאות.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 95,
+    "bars": [
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - g - X - - g - g - - X - - g",
+        "kick": "x - - - - - x - - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "funk_4",
+    "kind": "groove",
+    "style": "funk",
+    "level": 4,
+    "name": "Linear-feel funk",
+    "nameHe": "פאנק עם קיק בין המכות",
+    "tip": "הקיק נכנס בחורים שבין הסנר להיי-האט.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 95,
+    "bars": [
+      {
+        "hihat": "x x x x x x x x x x x x x x x x",
+        "snare": "- - - - X - - g - g - - X - - -",
+        "kick": "x - x - - - - x - - x - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "funk_5",
+    "kind": "groove",
+    "style": "funk",
+    "level": 5,
+    "name": "Broken hi-hat funk",
+    "nameHe": "פאנק עם היי-האט שבור",
+    "tip": "ההיי-האט נעצר לרגע – היד ממשיכה לזוז באוויר כדי לשמור על הזמן.",
+    "subdivision": 4,
+    "startBpm": 55,
+    "targetBpm": 95,
+    "bars": [
+      {
+        "hihat": "x x x x x x x - x x x x x - x x",
+        "snare": "- - - - X - - g - g - - X - - g",
+        "kick": "x - x - - - - - - - x - - x - -"
+      }
+    ]
+  },
+  {
+    "id": "fill_snare_half",
+    "kind": "fill",
+    "level": 1,
+    "name": "Half-bar snare fill",
+    "nameHe": "מילוי חצי תיבה על הסנר",
+    "tip": "שמיניות על הסנר בחצי השני של התיבה הרביעית, ונחיתה על קראש וקיק ב-1.",
+    "subdivision": 2,
+    "startBpm": 65,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "hihat": "- x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -",
+        "crash": "x - - - - - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      },
+      {
+        "fill": true,
+        "hihat": "x x x x - - - -",
+        "snare": "- - x - x x x x",
+        "kick": "x - - - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "fill_toms_8ths",
+    "kind": "fill",
+    "level": 2,
+    "name": "Around the toms in 8ths",
+    "nameHe": "סיבוב טומים בשמיניות",
+    "tip": "סנר, טום גבוה, טום אמצעי, טום רצפה – שתי מכות לכל אחד, והנחיתה בזמן.",
+    "subdivision": 2,
+    "startBpm": 65,
+    "targetBpm": 110,
+    "bars": [
+      {
+        "hihat": "- x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -",
+        "crash": "x - - - - - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      },
+      {
+        "hihat": "x x x x x x x x",
+        "snare": "- - x - - - x -",
+        "kick": "x - - - x - - -"
+      },
+      {
+        "fill": true,
+        "snare": "x x - - - - - -",
+        "tom_high": "- - x x - - - -",
+        "tom_mid": "- - - - x x - -",
+        "tom_floor": "- - - - - - x x",
+        "kick": "x - - - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "fill_snare_16ths",
+    "kind": "fill",
+    "level": 3,
+    "name": "16th-note snare fill",
+    "nameHe": "מילוי שש-עשריות על הסנר",
+    "tip": "שש-עשריות בנקישות 3–4. הכי קל למהר כאן – הקשב לקליק.",
+    "subdivision": 4,
+    "startBpm": 60,
+    "targetBpm": 100,
+    "bars": [
+      {
+        "hihat": "- - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -",
+        "crash": "x - - - - - - - - - - - - - - -"
+      },
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -"
+      },
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -"
+      },
+      {
+        "fill": true,
+        "hihat": "x - x - x - x - - - - - - - - -",
+        "snare": "- - - - x - - - x x x x x x x x",
+        "kick": "x - - - - - - - - - - - - - - -"
+      }
+    ]
+  },
+  {
+    "id": "fill_toms_16ths",
+    "kind": "fill",
+    "level": 4,
+    "name": "16th-note tom fill",
+    "nameHe": "מילוי שש-עשריות על הטומים",
+    "tip": "בנקישות 3–4: ארבע שש-עשריות על הסנר, שתיים על הטום הגבוה ואחת על כל אחד מהאחרים – ונחיתה על הקראש.",
+    "subdivision": 4,
+    "startBpm": 55,
+    "targetBpm": 95,
+    "bars": [
+      {
+        "hihat": "- - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -",
+        "crash": "x - - - - - - - - - - - - - - -"
+      },
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -"
+      },
+      {
+        "hihat": "x - x - x - x - x - x - x - x -",
+        "snare": "- - - - x - - - - - - - x - - -",
+        "kick": "x - - - - - - - x - - - - - - -"
+      },
+      {
+        "fill": true,
+        "hihat": "x - x - x - x - - - - - - - - -",
+        "snare": "- - - - x - - - x x x x - - - -",
+        "tom_high": "- - - - - - - - - - - - x x - -",
+        "tom_mid": "- - - - - - - - - - - - - - x -",
+        "tom_floor": "- - - - - - - - - - - - - - - x",
+        "kick": "x - - - - - - - - - - - - - - -"
+      }
+    ]
+  }
+]

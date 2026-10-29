@@ -30,7 +30,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.amihay.drumtrainer.model.Exercise
 import com.amihay.drumtrainer.model.NoteResult
 import com.amihay.drumtrainer.model.Stats
 import kotlin.math.abs
@@ -38,7 +37,7 @@ import kotlin.math.log10
 import kotlin.math.roundToInt
 
 /** Live state of one grid cell. */
-enum class StepState { PENDING, GOOD, OFF, MISS }
+enum class StepState { PENDING, GOOD, OFF, MISS, WRONG }
 
 /** Hits within this many ms of the grid are shown green; further away, orange. */
 const val GOOD_MS = 15.0
@@ -54,73 +53,7 @@ fun stateColor(s: StepState): Color = when (s) {
     StepState.GOOD -> Palette.good
     StepState.OFF -> Palette.off
     StepState.MISS -> Palette.bad
-}
-
-/**
- * Step grid for one bar: a row per hand (or a single row for "any hand"), beats
- * separated by thicker lines. Time always runs left to right, even in the RTL UI.
- */
-@Composable
-fun StickingGrid(
-    exercise: Exercise,
-    bar: Int,
-    states: Map<Int, StepState>,
-    cursorStep: Double?,
-    modifier: Modifier = Modifier,
-) {
-    val measurer = rememberTextMeasurer()
-    val steps = exercise.stepsPerBar
-    val hands = exercise.pattern.filterNotNull().map { it.hand }.distinct().sortedByDescending { it == 'R' }
-    val rows = if (hands.isEmpty()) listOf('-') else hands
-    val labelColor = MaterialTheme.colorScheme.onSurface
-    val lineColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Canvas(modifier.fillMaxWidth().height((rows.size * 72 + 24).dp)) {
-            val labelW = 36.dp.toPx()
-            val cellW = (size.width - labelW) / steps
-            val rowH = (size.height - 24.dp.toPx()) / rows.size
-            val top = 24.dp.toPx()
-
-            rows.forEachIndexed { r, hand ->
-                val y = top + r * rowH
-                if (hand != '-') {
-                    val t = measurer.measure(hand.toString(), TextStyle(color = lineColor, fontSize = 22.sp, fontWeight = FontWeight.Bold))
-                    drawText(t, topLeft = Offset((labelW - t.size.width) / 2, y + (rowH - t.size.height) / 2))
-                }
-                for (s in 0 until steps) {
-                    val stroke = exercise.strokeAt(bar * steps + s) ?: continue
-                    if (stroke.hand != hand && hand != '-') continue
-                    val x = labelW + s * cellW
-                    val pad = cellW * 0.1f
-                    drawRoundRect(
-                        color = stateColor(states[s] ?: StepState.PENDING),
-                        topLeft = Offset(x + pad, y + rowH * 0.12f),
-                        size = Size(cellW - 2 * pad, rowH * 0.76f),
-                        cornerRadius = CornerRadius(8.dp.toPx()),
-                    )
-                    if (stroke.accent) {
-                        val t = measurer.measure(">", TextStyle(color = labelColor, fontSize = 20.sp, fontWeight = FontWeight.Bold))
-                        drawText(t, topLeft = Offset(x + (cellW - t.size.width) / 2, top - t.size.height))
-                    }
-                }
-            }
-            for (s in 0..steps) {
-                val x = labelW + s * cellW
-                val isBeat = s % exercise.subdivision == 0
-                drawLine(
-                    color = lineColor.copy(alpha = if (isBeat) 0.8f else 0.25f),
-                    start = Offset(x, top),
-                    end = Offset(x, size.height),
-                    strokeWidth = if (isBeat) 3f else 1f,
-                )
-            }
-            if (cursorStep != null && cursorStep >= 0) {
-                val x = labelW + (cursorStep.toFloat() + 0.5f) * cellW
-                drawLine(Color.White, Offset(x, top), Offset(x, size.height), strokeWidth = 4.dp.toPx())
-            }
-        }
-    }
+    StepState.WRONG -> Palette.wrong
 }
 
 /** Histogram of deviations (−50…+50 ms). Time runs left (early) to right (late). */
