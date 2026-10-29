@@ -71,7 +71,7 @@ fun ProgressScreen(app: AppState) {
                             when {
                                 mastered -> "נשלט ✓"
                                 history.isEmpty() -> "עוד לא עבר"
-                                else -> "${history.maxOf { it.second }} / ${ex.targetBpm} BPM"
+                                else -> "$LRM${history.maxOf { it.second }} / ${ex.targetBpm} BPM"
                             },
                             style = MaterialTheme.typography.titleMedium,
                             color = if (mastered) Palette.good else Palette.muted,
