@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(app: AppState) {
     val progressFlow = remember { app.dao.allProgress() }
@@ -49,14 +52,17 @@ fun HomeScreen(app: AppState) {
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { app.screen = Screen.Calibration }) { Text("כיול") }
                 FilledTonalButton(onClick = { app.screen = Screen.Gap }) { Text("מטרונום עם חורים") }
                 FilledTonalButton(onClick = { app.screen = Screen.History }) { Text("היסטוריה") }
             }
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text("תיבות בסבב:", style = MaterialTheme.typography.bodyLarge)
                 listOf(2, 4, 8, 16).forEach { n ->
                     val selected = app.settings.barsPerRound == n

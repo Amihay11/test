@@ -59,6 +59,7 @@ private data class Outcome(
     val streak: Int,
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PracticeScreen(app: AppState, ex: Exercise) {
     val scope = rememberCoroutineScope()
@@ -161,7 +162,7 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 
             Phase.RESULTS -> outcome?.let { o ->
                 RoundResults(ex, o)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = ::startRound) { Text("סבב נוסף ב-$bpm BPM") }
                     FilledTonalButton(onClick = { phase = Phase.SETUP }) { Text("הגדרות") }
                 }
@@ -213,13 +214,14 @@ private fun LiveRound(ex: Exercise, p: RoundPlan, runner: RoundRunner) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SelfRating(onRate: (Int?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("איך הרגיש הסבב?", style = MaterialTheme.typography.headlineMedium)
         Text("קודם תחושה, אחר כך מספרים – כך האוזן הפנימית לומדת לשפוט את עצמה.",
             style = MaterialTheme.typography.bodyLarge, color = Palette.muted)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             (1..5).forEach { r -> Button(onClick = { onRate(r) }) { Text("$r", style = MaterialTheme.typography.titleLarge) } }
         }
         Text("1 = מפוזר לגמרי · 5 = נעול על הקליק", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)

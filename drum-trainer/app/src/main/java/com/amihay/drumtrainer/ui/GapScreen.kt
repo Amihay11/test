@@ -204,9 +204,10 @@ fun GapScreen(app: AppState) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> Choice(label: String, options: List<T>, selected: T, name: (T) -> String, onSelect: (T) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
         Text("$label:", style = MaterialTheme.typography.bodyLarge)
         options.forEach { o ->
             if (o == selected) Button(onClick = {}) { Text(name(o)) }

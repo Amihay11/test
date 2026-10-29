@@ -185,7 +185,7 @@ fun BpmStepper(bpm: Int, onChange: (Int) -> Unit, enabled: Boolean = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilledTonalButton(onClick = { onChange((bpm - 4).coerceAtLeast(30)) }, enabled = enabled) { Text("−4") }
             FilledTonalButton(onClick = { onChange((bpm - 1).coerceAtLeast(30)) }, enabled = enabled) { Text("−1") }
-            Text("$bpm BPM", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
+            Text("$bpm", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 4.dp))
             FilledTonalButton(onClick = { onChange((bpm + 1).coerceAtMost(260)) }, enabled = enabled) { Text("+1") }
             FilledTonalButton(onClick = { onChange((bpm + 4).coerceAtMost(260)) }, enabled = enabled) { Text("+4") }
         }
