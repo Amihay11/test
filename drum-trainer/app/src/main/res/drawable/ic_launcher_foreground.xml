@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Snare drum with two sticks. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#6CB6FF" android:pathData="M30,52 L78,52 L78,70 Q54,78 30,70 Z" />
+    <path android:fillColor="#E6E9EF" android:pathData="M30,52 Q54,44 78,52 Q54,60 30,52 Z" />
+    <path android:strokeColor="#F2A33A" android:strokeWidth="4" android:strokeLineCap="round"
+        android:pathData="M40,30 L56,50" />
+    <path android:strokeColor="#F2A33A" android:strokeWidth="4" android:strokeLineCap="round"
+        android:pathData="M70,30 L54,50" />
+</vector>
