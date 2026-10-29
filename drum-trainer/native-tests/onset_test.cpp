@@ -133,7 +133,11 @@ bool runScenario(const char *name, double bpm, int stepsPerBeat, float clickAmp,
     for (size_t i = 0; i < buf.size(); i += 192) {
         int n = static_cast<int>(std::min<size_t>(192, buf.size() - i));
         det.process(&buf[i], n, frame + static_cast<int64_t>(i),
-                    [&](const OnsetEvent &e) { found.push_back({e.frame - frame, e.strength}); });
+                    [&](const OnsetEvent &e) {
+                        OnsetEvent shifted = e;
+                        shifted.frame -= frame;
+                        found.push_back(shifted);
+                    });
     }
 
     Result r = evaluate(truth, found);

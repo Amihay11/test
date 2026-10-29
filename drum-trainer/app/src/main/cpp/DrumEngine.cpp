@@ -330,7 +330,11 @@ void DrumEngine::analysisLoop() {
         }
         double k = inMinusOut_.load();
         detector.process(buf.data(), static_cast<int>(got), base + consumed, [&](const OnsetEvent &e) {
-            AlignedOnset a{static_cast<double>(e.frame) - k, e.strength};
+            AlignedOnset a{};
+            a.frame = static_cast<double>(e.frame) - k;
+            a.strength = e.strength;
+            std::copy(e.bandsDb, e.bandsDb + kNumBands, a.bandsDb);
+            a.decayDb = e.decayDb;
             alignedRing_.push(a);
         });
         consumed += static_cast<int64_t>(got);

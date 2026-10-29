@@ -175,8 +175,9 @@ fun PracticeScreen(app: AppState, ex: Exercise) {
 private fun LiveRound(ex: Exercise, p: RoundPlan, runner: RoundRunner) {
     val playhead = runner.playhead
     val beat = p.beatAt(playhead)
-    // Hits are detected a few tens of ms after they sound; don't call a note missed before then.
-    val upTo = playhead - p.msToFrames(80.0)
+    // Hits arrive ~50-100 ms after they sound (detection + feature window); don't call a
+    // note missed before then.
+    val upTo = playhead - p.msToFrames(150.0)
     val live = Matcher.match(p.notes, runner.onsets, p.windowFrames, p.sampleRate, upToFrame = upTo)
     val bar = floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1)
     val states = HashMap<Int, StepState>()

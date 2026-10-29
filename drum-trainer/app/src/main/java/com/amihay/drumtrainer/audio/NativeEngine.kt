@@ -1,6 +1,7 @@
 package com.amihay.drumtrainer.audio
 
 import com.amihay.drumtrainer.model.Click
+import com.amihay.drumtrainer.model.HitFeatures
 import com.amihay.drumtrainer.model.Onset
 
 /** JNI bindings to the C++ engine (see app/src/main/cpp). */
@@ -21,6 +22,7 @@ object NativeEngine {
     external fun nativeSetSensitivity(s: Float)
     external fun nativeSetNotch(enabled: Boolean)
     external fun nativePollOnsets(out: DoubleArray): Int
+    external fun nativeOnsetStride(): Int
     external fun nativeInputPeak(): Float
     external fun nativeTimestampsAligned(): Boolean
     external fun nativeXruns(): Int
@@ -28,7 +30,10 @@ object NativeEngine {
 
 /** Kotlin-friendly facade over [NativeEngine]. */
 class AudioEngine {
-    private val pollBuffer = DoubleArray(512)
+    private val stride = NativeEngine.nativeOnsetStride().also {
+        check(it == 3 + HitFeatures.NUM_BANDS) { "native onset layout ($it) does not match Kotlin" }
+    }
+    private val pollBuffer = DoubleArray(stride * 128)
 
     val isRunning: Boolean get() = NativeEngine.nativeIsRunning()
     val sampleRate: Int get() = NativeEngine.nativeSampleRate()
@@ -73,10 +78,16 @@ class AudioEngine {
     fun pollOnsets(offsetMs: Double): List<Onset> {
         val out = ArrayList<Onset>()
         val offsetFrames = offsetMs * sampleRate / 1000.0
+        val nb = HitFeatures.NUM_BANDS
         while (true) {
             val n = NativeEngine.nativePollOnsets(pollBuffer)
-            for (i in 0 until n) out += Onset(pollBuffer[2 * i] - offsetFrames, pollBuffer[2 * i + 1].toFloat())
-            if (n < pollBuffer.size / 2) break
+            for (i in 0 until n) {
+                val o = i * stride
+                val bands = FloatArray(nb) { pollBuffer[o + 2 + it].toFloat() }
+                out += Onset(pollBuffer[o] - offsetFrames, pollBuffer[o + 1].toFloat(),
+                    HitFeatures(bands, pollBuffer[o + 2 + nb].toFloat()))
+            }
+            if (n < pollBuffer.size / stride) break
         }
         return out
     }

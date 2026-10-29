@@ -35,6 +35,7 @@ import com.amihay.drumtrainer.ui.DrumTheme
 import com.amihay.drumtrainer.ui.GapScreen
 import com.amihay.drumtrainer.ui.HistoryScreen
 import com.amihay.drumtrainer.ui.HomeScreen
+import com.amihay.drumtrainer.ui.KitScreen
 import com.amihay.drumtrainer.ui.PracticeScreen
 import com.amihay.drumtrainer.ui.Screen
 import kotlinx.coroutines.delay
@@ -97,6 +98,7 @@ private fun AppContent(app: AppState) {
         Screen.Calibration -> CalibrationScreen(app)
         Screen.Gap -> GapScreen(app)
         Screen.History -> HistoryScreen(app)
+        Screen.Kit -> KitScreen(app)
         is Screen.Practice -> PracticeScreen(app, app.exercise(s.exerciseId))
     }
 }

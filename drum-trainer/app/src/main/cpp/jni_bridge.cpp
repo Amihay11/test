@@ -63,17 +63,25 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetNotch)(JNIEnv *, jobject, jboolean enable
     engine().setNotchEnabled(enabled == JNI_TRUE);
 }
 
-// Fills out[] with (frame, strength) pairs; returns the number of onsets.
+// Number of values per onset in nativePollOnsets: frame, strength, bands..., decay.
+constexpr int kOnsetStride = 2 + kNumBands + 1;
+
+JNIEXPORT jint JNICALL JNI_FN(nativeOnsetStride)(JNIEnv *, jobject) { return kOnsetStride; }
+
+// Fills out[] with kOnsetStride values per onset; returns the number of onsets.
 JNIEXPORT jint JNICALL JNI_FN(nativePollOnsets)(JNIEnv *env, jobject, jdoubleArray out) {
-    jsize cap = env->GetArrayLength(out) / 2;
+    jsize cap = env->GetArrayLength(out) / kOnsetStride;
     std::vector<AlignedOnset> buf(cap);
     int n = engine().pollOnsets(buf.data(), cap);
-    std::vector<jdouble> flat(n * 2);
+    std::vector<jdouble> flat(static_cast<size_t>(n) * kOnsetStride);
     for (int i = 0; i < n; ++i) {
-        flat[2 * i] = buf[i].frame;
-        flat[2 * i + 1] = buf[i].strength;
+        jdouble *o = &flat[static_cast<size_t>(i) * kOnsetStride];
+        o[0] = buf[i].frame;
+        o[1] = buf[i].strength;
+        for (int b = 0; b < kNumBands; ++b) o[2 + b] = buf[i].bandsDb[b];
+        o[2 + kNumBands] = buf[i].decayDb;
     }
-    if (n > 0) env->SetDoubleArrayRegion(out, 0, n * 2, flat.data());
+    if (n > 0) env->SetDoubleArrayRegion(out, 0, n * kOnsetStride, flat.data());
     return n;
 }
 

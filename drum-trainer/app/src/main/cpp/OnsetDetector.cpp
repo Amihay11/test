@@ -38,6 +38,39 @@ OnsetDetector::OnsetDetector(int sampleRate)
         }
     }
 
+    // Feature analysis: Hann window over kFeatureLen samples and mel filters 50 Hz..16 kHz.
+    featWindow_.resize(kFeatureLen);
+    featSpec_.resize(kFeatureLen);
+    for (int i = 0; i < kFeatureLen; ++i) {
+        featWindow_[i] = 0.5f - 0.5f * std::cos(2.0f * static_cast<float>(M_PI) * i / kFeatureLen);
+    }
+    auto mel = [](double f) { return 2595.0 * std::log10(1.0 + f / 700.0); };
+    auto invMel = [](double m) { return 700.0 * (std::pow(10.0, m / 2595.0) - 1.0); };
+    double featBinHz = static_cast<double>(sampleRate) / kFeatureLen;
+    double fMax = std::min(16000.0, sampleRate / 2.0 - featBinHz);
+    double mLo = mel(50.0), mHi = mel(fMax);
+    for (int b = 0; b < kNumBands; ++b) {
+        double lo = invMel(mLo + (mHi - mLo) * b / (kNumBands + 1));
+        double mid = invMel(mLo + (mHi - mLo) * (b + 1) / (kNumBands + 1));
+        double hi = invMel(mLo + (mHi - mLo) * (b + 2) / (kNumBands + 1));
+        int first = static_cast<int>(std::floor(lo / featBinHz));
+        int last = static_cast<int>(std::ceil(hi / featBinHz));
+        std::vector<float> w;
+        for (int k = first; k <= last; ++k) {
+            double f = k * featBinHz;
+            double v = f <= mid ? (f - lo) / (mid - lo) : (hi - f) / (hi - mid);
+            w.push_back(static_cast<float>(std::max(0.0, v)));
+        }
+        // Low bands can be narrower than one bin: always keep the nearest bin.
+        bool any = false;
+        for (float v : w) any = any || v > 0;
+        if (!any) {
+            first = static_cast<int>(std::lround(mid / featBinHz));
+            w.assign(1, 1.0f);
+        }
+        melFilters_.emplace_back(first, std::move(w));
+    }
+
     setMinInterOnsetMs(45.0f);
     setSensitivity(0.5f);
 }
@@ -148,4 +181,26 @@ bool OnsetDetector::refine(int64_t windowEnd, OnsetEvent &out) {
     out.frame = attack;
     out.strength = peak;
     return true;
+}
+
+void OnsetDetector::computeFeatures(OnsetEvent &ev) {
+    const int half = kFeatureLen / 2;
+    double e1 = 1e-12, e2 = 1e-12;
+    for (int i = 0; i < kFeatureLen; ++i) {
+        float x = hist_[(ev.frame + i) & kHistMask];
+        featSpec_[i] = {x * featWindow_[i], 0.0f};
+        (i < half ? e1 : e2) += static_cast<double>(x) * x;
+    }
+    featFft_.forward(featSpec_);
+    for (int b = 0; b < kNumBands; ++b) {
+        const auto &f = melFilters_[b];
+        double p = 1e-14;
+        for (size_t j = 0; j < f.second.size(); ++j) {
+            int k = f.first + static_cast<int>(j);
+            if (k < 0 || k > kFeatureLen / 2) continue;
+            p += f.second[j] * std::norm(featSpec_[k]);
+        }
+        ev.bandsDb[b] = static_cast<float>(10.0 * std::log10(p));
+    }
+    ev.decayDb = static_cast<float>(10.0 * std::log10(e2 / e1));
 }

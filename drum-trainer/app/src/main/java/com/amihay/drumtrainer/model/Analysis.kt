@@ -5,7 +5,7 @@ import kotlin.math.log10
 import kotlin.math.sqrt
 
 /** A detected hit, already corrected for latency and expressed on the output clock. */
-data class Onset(val frame: Double, val strength: Float)
+data class Onset(val frame: Double, val strength: Float, val features: HitFeatures? = null)
 
 data class NoteResult(val note: ExpectedNote, val onset: Onset?, val deviationMs: Double?) {
     val hit: Boolean get() = onset != null

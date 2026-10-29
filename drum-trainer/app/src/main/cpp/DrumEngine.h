@@ -27,6 +27,8 @@ struct ScheduledClick {
 struct AlignedOnset {
     double frame;    // onset time expressed as an output-stream frame index
     float strength;
+    float bandsDb[kNumBands];
+    float decayDb;
 };
 
 // Full-duplex engine: the metronome is rendered in the output callback, which also

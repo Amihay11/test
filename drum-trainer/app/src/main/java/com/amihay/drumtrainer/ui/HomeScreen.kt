@@ -54,6 +54,7 @@ fun HomeScreen(app: AppState) {
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { app.screen = Screen.Calibration }) { Text("כיול") }
+                FilledTonalButton(onClick = { app.screen = Screen.Kit }) { Text("ערכת תופים") }
                 FilledTonalButton(onClick = { app.screen = Screen.Gap }) { Text("מטרונום עם חורים") }
                 FilledTonalButton(onClick = { app.screen = Screen.History }) { Text("היסטוריה") }
             }
