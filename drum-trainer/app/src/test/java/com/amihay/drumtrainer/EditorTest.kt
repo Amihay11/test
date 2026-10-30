@@ -38,7 +38,7 @@ class EditorTest {
 
     @Test
     fun grooveRoundTripsThroughTheExerciseFormat() {
-        var d = ExerciseDraft.blank("custom_3").copy(name = "הגרוב שלי", swing = 62)
+        var d = ExerciseDraft.blank("custom_3").copy(name = "My groove", swing = 62)
         for (s in 0 until 8) d = d.tap(0, "hihat", s)
         d = d.tap(0, "snare", 2).tap(0, "snare", 2)  // accent on 2
         d = d.tap(0, "snare", 6).tap(0, "snare", 6).tap(0, "snare", 6)  // ghost on 4
@@ -48,7 +48,7 @@ class EditorTest {
         val ex = parse(d)
         assertTrue(ex.isCustom)
         assertEquals(ExerciseKind.GROOVE, ex.kind)
-        assertEquals("הגרוב שלי", ex.nameHe)
+        assertEquals("My groove", ex.name)
         assertEquals(62, ex.swing)
         assertEquals(setOf(Pad.HIHAT, Pad.SNARE, Pad.KICK), ex.pads)
         assertTrue(ex.steps[2].first { it.pad == Pad.SNARE }.accent)
@@ -59,7 +59,7 @@ class EditorTest {
 
     @Test
     fun fillBarMakesAFillLoopWithALanding() {
-        var d = ExerciseDraft.blank("custom_4").copy(name = "מילוי", bars = List(2) { com.amihay.drumtrainer.model.DraftBar(emptyMap()) })
+        var d = ExerciseDraft.blank("custom_4").copy(name = "Fill", bars = List(2) { com.amihay.drumtrainer.model.DraftBar(emptyMap()) })
             .normalized()
         d = d.tap(0, "kick", 0).tap(0, "snare", 4)
         d = d.copy(bars = d.bars.toMutableList().also { it[1] = it[1].copy(fill = true) })
@@ -73,7 +73,7 @@ class EditorTest {
 
     @Test
     fun stickingBecomesARudimentPattern() {
-        var d = ExerciseDraft.blank("custom_5").copy(name = "פרדידל שלי", kind = DraftKind.STICKING, subdivision = 4).normalized()
+        var d = ExerciseDraft.blank("custom_5").copy(name = "My paradiddle", kind = DraftKind.STICKING, subdivision = 4).normalized()
         "RLRRLRLL".forEachIndexed { i, h -> d = d.tap(0, h.toString(), i) }
         d = d.tap(0, "R", 0)  // accent the first stroke
         val ex = parse(d)
@@ -95,15 +95,15 @@ class EditorTest {
         val ex = parse(d)
         assertEquals(setOf(0, 2, 4), ex.accentBeats)
         assertEquals(8, ex.beatUnit)
-        assertTrue(d.copy(beatGroups = listOf(3, 3)).problems().any { it.contains("לא מסתכמות") })
+        assertTrue(d.copy(beatGroups = listOf(3, 3)).problems().any { it.contains("don't add up") })
     }
 
     @Test
     fun problemsAreReported() {
         val d = ExerciseDraft.blank("custom_7")
         val p = d.problems()
-        assertTrue(p.contains("חסר שם"))
-        assertTrue(p.contains("אין אף מכה"))
+        assertTrue(p.contains("Missing a name"))
+        assertTrue(p.contains("No hits yet"))
     }
 
     @Test
@@ -125,12 +125,12 @@ class CustomExerciseStoreTest {
         val store = com.amihay.drumtrainer.data.CustomExerciseStore(File(dir, "custom.json"))
         assertTrue(store.load().isEmpty())
 
-        val a = ExerciseDraft.blank("custom_a").copy(name = "א").tap(0, "kick", 0)
-        val b = ExerciseDraft.blank("custom_b").copy(name = "ב").tap(0, "snare", 2)
+        val a = ExerciseDraft.blank("custom_a").copy(name = "A").tap(0, "kick", 0)
+        val b = ExerciseDraft.blank("custom_b").copy(name = "B").tap(0, "snare", 2)
         store.upsert(a.toJson())
         store.upsert(b.toJson())
-        store.upsert(a.copy(name = "א2").toJson())  // update keeps one entry
-        assertEquals(listOf("א2", "ב"), store.load().map { it.nameHe })
+        store.upsert(a.copy(name = "A2").toJson())  // update keeps one entry
+        assertEquals(listOf("A2", "B"), store.load().map { it.name })
 
         store.delete("custom_a")
         assertEquals(listOf("custom_b"), store.load().map { it.id })
@@ -140,7 +140,7 @@ class CustomExerciseStoreTest {
     fun aBrokenEntryDoesNotHideTheOthers() {
         val dir = java.nio.file.Files.createTempDirectory("custom").toFile()
         val f = File(dir, "custom.json")
-        val good = ExerciseDraft.blank("custom_ok").copy(name = "טוב").tap(0, "kick", 0).toJson()
+        val good = ExerciseDraft.blank("custom_ok").copy(name = "Good").tap(0, "kick", 0).toJson()
         f.writeText(JSONArray().put(org.json.JSONObject().put("id", "custom_bad")).put(good).toString())
         assertEquals(listOf("custom_ok"), com.amihay.drumtrainer.data.CustomExerciseStore(f).load().map { it.id })
     }

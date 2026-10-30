@@ -49,8 +49,7 @@ private fun cellState(states: Map<CellKey, StepState>, step: Int, row: String) =
 
 /**
  * Step grid for one bar: a row per drum (or per hand for rudiments), beats separated by
- * thicker lines. Ghost notes are drawn small, accents get a ">". Time runs left to right
- * even in the RTL UI.
+ * thicker lines. Ghost notes are drawn small, accents get a ">". Time runs left to right.
  */
 @Composable
 fun ExerciseGrid(

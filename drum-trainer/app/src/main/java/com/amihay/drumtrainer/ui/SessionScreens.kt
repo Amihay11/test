@@ -63,8 +63,8 @@ private suspend fun planFor(app: AppState, now: Long, runs: List<RunRecord>? = n
 }
 
 private fun itemName(app: AppState, item: SessionItem): String = when {
-    item.gap != null -> "מטרונום עם חורים · ${item.gap.onBars} עם, ${item.gap.offBars} בלי"
-    else -> app.exercises.firstOrNull { it.id == item.exerciseId }?.nameHe ?: item.exerciseId.orEmpty()
+    item.gap != null -> "Gap click · ${item.gap.onBars} on, ${item.gap.offBars} off"
+    else -> app.exercises.firstOrNull { it.id == item.exerciseId }?.name ?: item.exerciseId.orEmpty()
 }
 
 private fun openItem(app: AppState, item: SessionItem, kind: PartKind) {
@@ -77,7 +77,7 @@ private fun openItem(app: AppState, item: SessionItem, kind: PartKind) {
 
 private fun mmss(ms: Long): String {
     val s = (ms / 1000).coerceAtLeast(0)
-    return "$LRM%d:%02d".format(s / 60, s % 60)
+    return "%d:%02d".format(s / 60, s % 60)
 }
 
 @Composable
@@ -107,13 +107,13 @@ fun SessionScreen(app: AppState) {
     }
 
     Page(
-        "אימון של היום",
+        "Today's session",
         onBack = { app.screen = Screen.Home },
-        subtitle = session?.let { "עברו ${mmss(now - it.startedAt)} מתוך ${it.plan.minutes} דקות" },
+        subtitle = session?.let { "${mmss(now - it.startedAt)} of ${it.plan.minutes} minutes" },
         bottomBar = {
             if (session == null) {
                 val plan = preview
-                PrimaryButton("התחל אימון", {
+                PrimaryButton("Start session", {
                     if (plan != null) scope.launch {
                         val start = System.currentTimeMillis()
                         val id = app.dao.insertSession(SessionEntity(startedAt = start, plannedMinutes = plan.minutes))
@@ -123,26 +123,26 @@ fun SessionScreen(app: AppState) {
             } else {
                 val last = session.part == session.plan.parts.lastIndex
                 if (last) {
-                    PrimaryButton("סיים אימון", finish, icon = Icons.Filled.Check)
+                    PrimaryButton("Finish session", finish, icon = Icons.Filled.Check)
                 } else {
-                    PrimaryButton("לחלק הבא: ${session.plan.parts[session.part + 1].kind.he}",
+                    PrimaryButton("Next: ${session.plan.parts[session.part + 1].kind.label}",
                         { session.goTo(session.part + 1, System.currentTimeMillis()) })
                     TextButton(onClick = finish, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                        Text("סיים עכשיו", color = Palette.muted)
+                        Text("Finish now", color = Palette.muted)
                     }
                 }
             }
         },
     ) {
         if (session == null) {
-            Text("חמישה חלקים, לפי מה שניגנת עד עכשיו. אפשר לדלג על חלק או לנגן משהו אחר.",
+            Text("Five parts, based on what you have played so far. Skip a part or play something else whenever you like.",
                 style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
-            Field("אורך") {
-                Segmented(listOf(30, 45, 60).map { it to "$it דק'" }, app.settings.sessionMinutes, { app.settings.updateSessionMinutes(it) })
+            Field("Length") {
+                Segmented(listOf(30, 45, 60).map { it to "$it min" }, app.settings.sessionMinutes, { app.settings.updateSessionMinutes(it) })
             }
             val plan = preview
             if (plan == null) {
-                CenteredNote("מכין תוכנית…")
+                CenteredNote("Planning…")
             } else {
                 plan.parts.forEachIndexed { i, part ->
                     PartCard(app, i, part, current = false, done = false, played = emptyList(), elapsedMs = null, expanded = true)
@@ -200,11 +200,11 @@ private fun PartCard(
                 else Text("${index + 1}", style = MaterialTheme.typography.labelLarge,
                     color = if (current) Palette.background else Palette.text)
             }
-            Text(part.kind.he, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f),
+            Text(part.kind.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f),
                 color = if (done) Palette.muted else Palette.text)
             val over = elapsedMs != null && elapsedMs > part.minutes * 60_000L
             Text(
-                if (elapsedMs != null) "${mmss(elapsedMs)} / ${part.minutes} דק'" else "${part.minutes} דק'",
+                if (elapsedMs != null) "${mmss(elapsedMs)} / ${part.minutes} min" else "${part.minutes} min",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (over) Palette.off else Palette.muted,
             )
@@ -221,14 +221,14 @@ private fun PartCard(
                 Column(Modifier.weight(1f)) {
                     Text(itemName(app, item), style = MaterialTheme.typography.titleSmall,
                         color = if (isPlayed) Palette.good else Palette.text)
-                    Text("$LRI${item.bpm} BPM$PDI · ${item.reason}", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+                    Text("${item.bpm} BPM · ${item.reason}", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
                 }
                 if (current) {
                     if (isPlayed) {
-                        TextButton(onClick = { openItem(app, item, part.kind) }) { Text("שוב") }
+                        TextButton(onClick = { openItem(app, item, part.kind) }) { Text("Again") }
                     } else {
                         FilledIconButton(onClick = { openItem(app, item, part.kind) }) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "נגן")
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "Play")
                         }
                     }
                 }
@@ -248,31 +248,31 @@ fun SessionSummaryScreen(app: AppState, sessionId: Long) {
     }
 
     Page(
-        "סיכום אימון",
+        "Session summary",
         onBack = { app.screen = Screen.Home },
         bottomBar = {
-            PrimaryButton("סיום", { app.screen = Screen.Home }, icon = Icons.Filled.Check)
+            PrimaryButton("Done", { app.screen = Screen.Home }, icon = Icons.Filled.Check)
             TextButton(onClick = { app.screen = Screen.Progress }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("לגרף ההתקדמות")
+                Text("See progress")
             }
         },
     ) {
         val s = summary
         if (s == null) {
-            CenteredNote("מסכם…")
+            CenteredNote("Summing up…")
             return@Page
         }
         if (s.mastered.isNotEmpty()) {
-            SummarySection("נשלט", s.mastered.map { "$it – עבר את הסף בטמפו היעד בשני אימונים" }, Palette.good)
+            SummarySection("Mastered", s.mastered.map { "$it: passed at the target tempo in two sessions" }, Palette.good)
         }
-        SummarySection("מה השתפר", s.improved.ifEmpty { listOf("אין שיא חדש הפעם – וזה בסדר, הדיוק נבנה לאט.") }, Palette.good)
+        SummarySection("What improved", s.improved.ifEmpty { listOf("No new best this time. That's fine: accuracy builds slowly.") }, Palette.good)
         if (s.stuck.isNotEmpty()) {
-            SummarySection("מה נתקע", s.stuck + "כדאי להוריד 4–8 BPM בפעם הבאה ולבנות מחדש.", Palette.off)
+            SummarySection("What's stuck", s.stuck + "Drop 4–8 BPM next time and build it back up.", Palette.off)
         }
         next?.let { plan ->
             SummarySection(
-                "מה יחכה באימון הבא",
-                plan.parts.flatMap { part -> part.items.map { "${part.kind.he}: ${itemName(app, it)} · $LRI${it.bpm} BPM$PDI" } },
+                "Coming up next session",
+                plan.parts.flatMap { part -> part.items.map { "${part.kind.label}: ${itemName(app, it)} · ${it.bpm} BPM" } },
                 Palette.accent,
             )
         }

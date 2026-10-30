@@ -124,7 +124,7 @@ class AppState(context: Context) {
 
     fun startEngine() {
         if (engine.isRunning) return
-        engineError = if (engine.start()) null else "לא הצלחתי לפתוח את המיקרופון או הרמקול"
+        engineError = if (engine.start()) null else "Couldn't open the microphone or the speaker"
         engine.setSensitivity(settings.sensitivity)
         engine.setNotch(true)
     }

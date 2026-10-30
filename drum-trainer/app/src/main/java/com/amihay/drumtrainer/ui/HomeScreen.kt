@@ -45,10 +45,10 @@ import com.amihay.drumtrainer.model.PartKind
 import java.util.Calendar
 
 private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-    in 5..11 -> "בוקר טוב"
-    in 12..16 -> "צהריים טובים"
-    in 17..21 -> "ערב טוב"
-    else -> "לילה טוב"
+    in 5..11 -> "Good morning"
+    in 12..16 -> "Good afternoon"
+    in 17..21 -> "Good evening"
+    else -> "Good night"
 }
 
 @Composable
@@ -66,51 +66,51 @@ fun HomeScreen(app: AppState) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = PagePadding),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        TabHeader(greeting(), "מוכן לנגן?") {
+        TabHeader(greeting(), "Ready to play?") {
             IconButton(onClick = { app.screen = Screen.Settings }) {
-                Icon(Icons.Filled.Settings, contentDescription = "הגדרות", tint = Palette.muted)
+                Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = Palette.muted)
             }
         }
 
         app.engineError?.let { Banner(it, Palette.bad) }
 
-        Field("מנגן על") {
+        Field("Playing on") {
             Segmented(
-                listOf(false to "התופים", true to "המסך"),
+                listOf(false to "Drums", true to "Screen"),
                 touch,
                 { app.settings.updateTouchInput(it) },
             )
         }
         when {
             touch && app.settings.touchOffsetMs.isNaN() ->
-                Banner("כדאי לכייל את מסך המגע – בלי כיול ההקשות ייראו מאוחרות.", Palette.off) { app.screen = Screen.Calibration }
+                Banner("Calibrate the touch screen, or your taps will look late.", Palette.off) { app.screen = Screen.Calibration }
             !touch && !app.settings.isCalibrated ->
-                Banner("עוד לא כיילת – בלי כיול כל המכות ייראו מאוחרות. מתחילים כאן.", Palette.off) { app.screen = Screen.Calibration }
+                Banner("Not calibrated yet, so every hit will look late. Start here.", Palette.off) { app.screen = Screen.Calibration }
         }
 
         TodayCard(app)
 
         if (recent.isNotEmpty()) {
-            SectionLabel("להמשיך מאיפה שעצרת")
+            SectionLabel("Pick up where you left off")
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(recent, key = { it.id }) { ex -> RecentCard(app, ex, byId[app.progressId(ex.id)]) }
             }
         }
 
-        SectionLabel("כלים")
+        SectionLabel("Tools")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ToolTile("מטרונום עם חורים", "לשמור על הקצב בשקט", AppIcons.Metronome, Palette.off, Modifier.weight(1f)) {
+            ToolTile("Gap click", "Keep time in the silence", AppIcons.Metronome, Palette.off, Modifier.weight(1f)) {
                 app.screen = Screen.Gap()
             }
-            ToolTile("תופים על המסך", "לנגן ולראות קצבים", AppIcons.Drum, Palette.good, Modifier.weight(1f)) {
+            ToolTile("Drums on screen", "Play and watch patterns", AppIcons.Drum, Palette.good, Modifier.weight(1f)) {
                 app.screen = Screen.Drums()
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ToolTile("תרגיל חדש", "לכתוב גרוב או מילוי", Icons.Filled.Add, Palette.accent, Modifier.weight(1f)) {
+            ToolTile("New exercise", "Write a groove or a fill", Icons.Filled.Add, Palette.accent, Modifier.weight(1f)) {
                 app.screen = Screen.Editor()
             }
-            ToolTile("כיול", "השהיה, מיקרופון ותופים", Icons.Filled.Settings, Palette.wrong, Modifier.weight(1f)) {
+            ToolTile("Calibration", "Latency, mic and drums", Icons.Filled.Settings, Palette.wrong, Modifier.weight(1f)) {
                 app.screen = Screen.Calibration
             }
         }
@@ -126,15 +126,15 @@ private fun TodayCard(app: AppState) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Palette.hero).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("אימון של היום", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.8f))
+        Text("Today's session", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.8f))
         if (session == null) {
-            Text("${app.settings.sessionMinutes} דקות · ${PartKind.entries.size} חלקים",
+            Text("${app.settings.sessionMinutes} minutes · ${PartKind.entries.size} parts",
                 style = MaterialTheme.typography.headlineMedium, color = Color.White)
-            Text(PartKind.entries.joinToString(" · ") { it.he }, style = MaterialTheme.typography.bodyMedium,
+            Text(PartKind.entries.joinToString(" · ") { it.label }, style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.85f))
         } else {
             val part = session.plan.parts[session.part]
-            Text("חלק ${session.part + 1} מתוך ${session.plan.parts.size}: ${part.kind.he}",
+            Text("Part ${session.part + 1} of ${session.plan.parts.size}: ${part.kind.label}",
                 style = MaterialTheme.typography.headlineMedium, color = Color.White)
             Dots(session.part, session.plan.parts.size, Color.White, current = session.part)
         }
@@ -147,7 +147,7 @@ private fun TodayCard(app: AppState) {
         ) {
             Icon(Icons.Filled.PlayArrow, contentDescription = null)
             Spacer(Modifier.size(6.dp))
-            Text(if (session == null) "התחל אימון" else "המשך אימון", style = MaterialTheme.typography.titleMedium)
+            Text(if (session == null) "Start session" else "Continue session", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -157,8 +157,8 @@ private fun RecentCard(app: AppState, ex: Exercise, p: ProgressEntity?) {
     val bpm = p?.currentBpm ?: ex.startBpm
     Panel(Modifier.width(180.dp), onClick = { app.screen = Screen.Practice(ex.id) }, spacing = 8.dp, padding = 14.dp) {
         IconBadge(kindIcon(ex), kindColor(ex), size = 34.dp)
-        Text(ex.nameHe, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("$LRI$bpm / ${ex.targetBpm} BPM$PDI", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+        Text(ex.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("$bpm / ${ex.targetBpm} BPM", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
         Meter(tempoProgress(ex, p), color = kindColor(ex))
     }
 }
@@ -195,19 +195,27 @@ fun kindColor(ex: Exercise): Color = when (ex.kind) {
     else -> Palette.accent
 }
 
+/** "Rudiment", or the style and level of a groove or fill. */
+fun kindLabel(ex: Exercise): String = when (ex.kind) {
+    ExerciseKind.RUDIMENT -> if (ex.id.startsWith("custom_")) "Sticking · my exercise" else "Rudiment"
+    ExerciseKind.INDEPENDENCE -> "Independence · level ${ex.level}"
+    ExerciseKind.FILL -> "Fill · level ${ex.level}"
+    else -> (Category.entries.drop(3).firstOrNull { it.matches(ex) }?.label ?: "Groove") + " · level ${ex.level}"
+}
+
 /** Library categories, in the order of the curriculum. */
-enum class Category(val he: String, val matches: (Exercise) -> Boolean) {
-    ALL("הכל", { true }),
-    MINE("שלי", { it.id.startsWith("custom_") }),
-    RUDIMENTS("רודימנטים", { it.kind == ExerciseKind.RUDIMENT && !it.id.startsWith("custom_") }),
-    INDEPENDENCE("עצמאות", { it.kind == ExerciseKind.INDEPENDENCE }),
-    ROCK("רוק ופופ", { it.kind == ExerciseKind.GROOVE && it.style == "rock" }),
-    FUNK("פאנק וסול", { it.kind == ExerciseKind.GROOVE && it.style == "funk" }),
-    JAZZ("ג'אז ובלוז", { it.kind == ExerciseKind.GROOVE && (it.style == "jazz" || it.style == "blues") }),
-    LATIN("לטיני", { it.kind == ExerciseKind.GROOVE && it.style == "latin" }),
-    MIDEAST("מזרחי", { it.kind == ExerciseKind.GROOVE && it.style == "mideast" }),
-    ELECTRONIC("אלקטרוני ומשקלים", { it.kind == ExerciseKind.GROOVE && it.style == "electronic" }),
-    FILLS("מילויים", { it.kind == ExerciseKind.FILL && !it.id.startsWith("custom_") }),
+enum class Category(val label: String, val matches: (Exercise) -> Boolean) {
+    ALL("All", { true }),
+    MINE("Mine", { it.id.startsWith("custom_") }),
+    RUDIMENTS("Rudiments", { it.kind == ExerciseKind.RUDIMENT && !it.id.startsWith("custom_") }),
+    INDEPENDENCE("Independence", { it.kind == ExerciseKind.INDEPENDENCE }),
+    ROCK("Rock & pop", { it.kind == ExerciseKind.GROOVE && it.style == "rock" }),
+    FUNK("Funk & soul", { it.kind == ExerciseKind.GROOVE && it.style == "funk" }),
+    JAZZ("Jazz & blues", { it.kind == ExerciseKind.GROOVE && (it.style == "jazz" || it.style == "blues") }),
+    LATIN("Latin", { it.kind == ExerciseKind.GROOVE && it.style == "latin" }),
+    MIDEAST("Middle Eastern", { it.kind == ExerciseKind.GROOVE && it.style == "mideast" }),
+    ELECTRONIC("Electronic & odd meters", { it.kind == ExerciseKind.GROOVE && it.style == "electronic" }),
+    FILLS("Fills", { it.kind == ExerciseKind.FILL && !it.id.startsWith("custom_") }),
 }
 
 /** A row in the exercise library. */
@@ -224,19 +232,19 @@ fun ExerciseCard(app: AppState, ex: Exercise, p: ProgressEntity?) {
         IconBadge(kindIcon(ex), kindColor(ex), size = 44.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(ex.nameHe, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                Text(ex.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false))
-                if (mastered) Pill("נשלט", Palette.good)
+                if (mastered) Pill("Mastered", Palette.good)
             }
             Text(
-                ex.name + if (ex.kind != ExerciseKind.RUDIMENT) " · רמה ${ex.level}" else "",
+                kindLabel(ex),
                 style = MaterialTheme.typography.bodySmall, color = Palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Meter(tempoProgress(ex, p), color = if (mastered) Palette.good else kindColor(ex))
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${p?.currentBpm ?: ex.startBpm}", style = MaterialTheme.typography.titleLarge)
-            Text("יעד ${ex.targetBpm}", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+            Text("target ${ex.targetBpm}", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
         }
     }
 }

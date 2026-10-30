@@ -92,7 +92,7 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
     val isTab = back == Screen.Home
     val p = plan
     Column(Modifier.fillMaxSize()) {
-        if (!isTab) TopBar("תופים על המסך", onBack = {
+        if (!isTab) TopBar("Drums on screen", onBack = {
             stop()
             app.screen = back
         })
@@ -100,25 +100,25 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PagePadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (isTab) TabHeader("מערכת", "הקש על התופים כדי לשמוע אותם, או בחר קצב וראה אותו מתנגן")
+            if (isTab) TabHeader("Kit", "Tap the drums to hear them, or pick a pattern and watch it play")
 
             Panel(color = Palette.surface, padding = 10.dp) {
                 DrumKitView(app, appLights = if (p != null) appLights(p.clicks, runner.playhead, p.sampleRate) else emptyMap())
             }
 
-            if (p != null) QuietButton("עצור", ::stop, Modifier.fillMaxWidth())
-            else PrimaryButton("נגן את ${ex.nameHe} · $LRI$bpm BPM$PDI", ::play, icon = Icons.Filled.PlayArrow)
+            if (p != null) QuietButton("Stop", ::stop, Modifier.fillMaxWidth())
+            else PrimaryButton("Play ${ex.name} · $bpm BPM", ::play, icon = Icons.Filled.PlayArrow)
 
             val beat = p?.beatAt(runner.playhead)
             val bar = if (p != null && beat != null && beat >= 0) floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1) else 0
             val cycleBar = bar % ex.cycleBars
             Section(
-                ex.nameHe,
+                ex.name,
                 trailing = {
                     if (p != null && beat != null) {
-                        Pill(if (beat < 0) "ספירה…" else "תיבה ${bar + 1} / ${p.bars}")
+                        Pill(if (beat < 0) "Count-in…" else "Bar ${bar + 1} / ${p.bars}")
                     } else {
-                        SmallAction("החלף קצב", Icons.Filled.Search) { picking = true }
+                        SmallAction("Change", Icons.Filled.Search) { picking = true }
                     }
                 },
             ) {
@@ -128,14 +128,14 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
                 )
                 if (p == null) {
                     TempoControl(bpm, { bpm = it })
-                    ListRow("מטרונום", if (metronome) "מנגן יחד עם התופים" else "רק ספירה בהתחלה") {
+                    ListRow("Metronome", if (metronome) "Plays along with the drums" else "Count-in only") {
                         Switch(checked = metronome, onCheckedChange = { metronome = it })
                     }
                 }
             }
 
             if (p == null) {
-                SecondaryButton("לתרגל את הקצב הזה", { app.screen = Screen.Practice(ex.id) }, Modifier.fillMaxWidth())
+                SecondaryButton("Practice this pattern", { app.screen = Screen.Practice(ex.id) }, Modifier.fillMaxWidth())
             }
             Text(SAMPLE_CREDIT, style = MaterialTheme.typography.bodySmall, color = Palette.muted)
             Spacer(Modifier.height(12.dp))
@@ -159,16 +159,16 @@ fun DrumsScreen(app: AppState, exerciseId: String?, back: Screen) {
 private fun ExercisePicker(exercises: List<Exercise>, onPick: (Exercise) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("ביטול") } },
-        title = { Text("בחר קצב") },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        title = { Text("Pick a pattern") },
         text = {
             // Patterns on the drums first; hand exercises are played on the snare.
             val sorted = exercises.sortedBy { if (it.usesPads) 0 else 1 }
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 items(sorted, key = { it.id }) { e ->
                     Column(Modifier.fillMaxWidth().clickable { onPick(e) }.padding(vertical = 10.dp)) {
-                        Text(e.nameHe, style = MaterialTheme.typography.titleMedium)
-                        Text("${e.name} · $LRI${e.startBpm}–${e.targetBpm} BPM$PDI", style = MaterialTheme.typography.bodyMedium,
+                        Text(e.name, style = MaterialTheme.typography.titleMedium)
+                        Text("${kindLabel(e)} · ${e.startBpm}–${e.targetBpm} BPM", style = MaterialTheme.typography.bodyMedium,
                             color = Palette.muted)
                     }
                 }

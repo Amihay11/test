@@ -78,11 +78,11 @@ private enum class Phase { SETUP, PREVIEW, RUNNING, RATING, RESULTS }
 /** How the app takes part in a round. */
 private enum class PlayMode(val label: String, val tag: String) {
     /** Only the metronome. */
-    NORMAL("רגיל", ""),
+    NORMAL("Normal", ""),
     /** The app plays the pattern at the same time as the player. */
-    TOGETHER("ביחד", "-together"),
+    TOGETHER("Together", "-together"),
     /** The app plays a cycle, then the player plays it back. */
-    ECHO("חזור אחריי", "-echo"),
+    ECHO("Echo", "-echo"),
 }
 
 private data class Outcome(
@@ -209,8 +209,8 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
     else ex.roundBars(app.settings.barsPerRound)
 
     Page(
-        title = ex.nameHe,
-        subtitle = ex.name + if (ex.kind != ExerciseKind.RUDIMENT) " · רמה ${ex.level}" else "",
+        title = ex.name,
+        subtitle = kindLabel(ex),
         onBack = {
             job?.cancel()
             app.screen = app.home
@@ -220,28 +220,28 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 IconButton(onClick = {
                     job?.cancel()
                     app.screen = Screen.Editor(ex.id)
-                }) { Icon(Icons.Filled.Edit, contentDescription = "ערוך", tint = Palette.muted) }
+                }) { Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = Palette.muted) }
             }
             IconButton(onClick = {
                 job?.cancel()
                 app.screen = Screen.Drums(ex.id, back = Screen.Practice(ex.id))
-            }) { Icon(AppIcons.Drum, contentDescription = "על המערכת", tint = Palette.muted) }
+            }) { Icon(AppIcons.Drum, contentDescription = "On the kit", tint = Palette.muted) }
         },
         bottomBar = when (phase) {
             Phase.SETUP -> ({
                 PrimaryButton(
-                    "התחל סבב · $roundBars תיבות" + if (mode == PlayMode.ECHO) " שלך" else "",
+                    "Start round · $roundBars bars" + if (mode == PlayMode.ECHO) " (your turns)" else "",
                     ::startRound, icon = Icons.Filled.PlayArrow,
                 )
             })
-            Phase.PREVIEW, Phase.RUNNING -> ({ QuietButton("עצור", stop, Modifier.fillMaxWidth()) })
+            Phase.PREVIEW, Phase.RUNNING -> ({ QuietButton("Stop", stop, Modifier.fillMaxWidth()) })
             Phase.RATING -> null
             Phase.RESULTS -> ({
-                PrimaryButton("סבב נוסף · $LRI$bpm BPM$PDI", ::startRound, icon = Icons.Filled.Refresh)
+                PrimaryButton("Again · $bpm BPM", ::startRound, icon = Icons.Filled.Refresh)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton("שינוי הגדרות", { phase = Phase.SETUP }, Modifier.weight(1f))
+                    SecondaryButton("Settings", { phase = Phase.SETUP }, Modifier.weight(1f))
                     if (app.activeSession != null) {
-                        SecondaryButton("חזרה לאימון", { app.screen = Screen.Session }, Modifier.weight(1f))
+                        SecondaryButton("Back to session", { app.screen = Screen.Session }, Modifier.weight(1f))
                     }
                 }
             })
@@ -252,19 +252,19 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 if (ex.tip.isNotEmpty()) Text(ex.tip, style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
                 if (touch) {
                     if (app.settings.touchOffsetMs.isNaN()) {
-                        Banner("עוד לא כיילת את מסך המגע – בלי כיול ההקשות ייראו מאוחרות.", Palette.off) {
+                        Banner("The touch screen isn't calibrated yet, so taps will look late.", Palette.off) {
                             app.screen = Screen.Calibration
                         }
                     }
                 } else if (ex.usesPads && !padAware) {
-                    val missing = (ex.pads - app.classifier.pads).sortedBy { it.ordinal }.joinToString(", ") { it.he }
-                    Banner("לא נלמדו: $missing. בסבב הזה נמדד רק התזמון – כדי לבדוק גם את התופים, למד אותם.",
+                    val missing = (ex.pads - app.classifier.pads).sortedBy { it.ordinal }.joinToString(", ") { it.label }
+                    Banner("Not learned yet: $missing. This round checks timing only; learn these drums to check them too.",
                         Palette.off) { app.screen = Screen.Kit }
                 }
 
-                Section("התבנית", trailing = {
+                Section("Pattern", trailing = {
                     ViewToggle(app)
-                    SmallAction("השמע", Icons.Filled.PlayArrow, ::startPreview)
+                    SmallAction("Listen", Icons.Filled.PlayArrow, ::startPreview)
                 }) {
                     for ((bars, label) in distinctBars(ex)) {
                         if (label != null) Text(label, style = MaterialTheme.typography.labelLarge, color = Palette.muted)
@@ -272,20 +272,20 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                     }
                 }
 
-                Section("טמפו") {
+                Section("Tempo") {
                     TempoControl(
                         bpm, { bpm = it },
-                        caption = "יעד $LRI${ex.targetBpm} BPM$PDI" + if (ex.beatUnit == 8) " · נמדד בשמיניות" else "",
+                        caption = "Target ${ex.targetBpm} BPM" + if (ex.beatUnit == 8) " · counted in eighths" else "",
                     )
                     if (ex.swing != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("סווינג", style = MaterialTheme.typography.labelLarge, color = Palette.muted, modifier = Modifier.weight(1f))
+                            Text("Swing", style = MaterialTheme.typography.labelLarge, color = Palette.muted, modifier = Modifier.weight(1f))
                             Text(
                                 "$swing% · " + when {
-                                    swing <= 52 -> "ישר"
-                                    swing in 64..68 -> "טריולה"
-                                    swing > 68 -> "מנוקד חזק"
-                                    else -> "קל"
+                                    swing <= 52 -> "straight"
+                                    swing in 64..68 -> "triplet"
+                                    swing > 68 -> "hard dotted"
+                                    else -> "light"
                                 },
                                 style = MaterialTheme.typography.labelLarge,
                             )
@@ -297,22 +297,22 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                     }
                 }
 
-                Section("איך מנגנים") {
+                Section("How to play") {
                     Segmented(PlayMode.entries.map { it to it.label }, mode, {
                         mode = it
                         route = currentAudioRoute(context)
                     })
                     Text(
                         when (mode) {
-                            PlayMode.NORMAL -> "אתה מנגן עם המטרונום."
+                            PlayMode.NORMAL -> "You play with the metronome."
                             PlayMode.ECHO ->
-                                "האפליקציה מנגנת ${if (ex.cycleBars == 1) "תיבה" else "${ex.cycleBars} תיבות"}, ואתה חוזר אחריה. נמדדים רק התורות שלך."
-                            PlayMode.TOGETHER -> if (touch) "האפליקציה מנגנת את התופים איתך, והם נדלקים על המסך." else when (route) {
-                                AudioRoute.WIRED -> "האפליקציה מנגנת את התופים איתך באוזניות. המיקרופון שומע רק אותך."
-                                AudioRoute.SPEAKER -> "האפליקציה מנגנת איתך צלילי הנחיה שהמיקרופון מסנן, כך שנמדדת רק הנגינה שלך. " +
-                                    "עם אוזניות חוטיות תשמע תופים."
-                                AudioRoute.BLUETOOTH -> "אוזניות בלוטות' מאחרות את הצליל בעשרות מילישניות או יותר. " +
-                                    "עדיף אוזניות חוטיות או רמקול הטלפון."
+                                "The app plays ${if (ex.cycleBars == 1) "a bar" else "${ex.cycleBars} bars"}, then you play it back. Only your turns are scored."
+                            PlayMode.TOGETHER -> if (touch) "The app plays the drums with you, and they light up on the screen." else when (route) {
+                                AudioRoute.WIRED -> "The app plays the drums with you in your headphones. The microphone only hears you."
+                                AudioRoute.SPEAKER -> "The app plays guide tones with you that the microphone filters out, so only your playing is measured. " +
+                                    "With wired headphones you hear drums."
+                                AudioRoute.BLUETOOTH -> "Bluetooth headphones delay the sound by tens of milliseconds or more. " +
+                                    "Wired headphones or the phone speaker work better."
                             }
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -321,18 +321,18 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
                 }
 
                 if (touch) {
-                    Section(if (ex.usesPads) "המערכת שלך" else "הפדים שלך") {
+                    Section(if (ex.usesPads) "Your kit" else "Your pads") {
                         Text(
-                            if (ex.usesPads) "נגן באצבעות על המערכת. אפשר לנסות כבר עכשיו."
-                            else "יד שמאל על הפד השמאלי, יד ימין על הימני – נמדדים התזמון והיד.",
+                            if (ex.usesPads) "Play the kit with your fingers. Try it now."
+                            else "Left hand on the left pad, right hand on the right: timing and hand are both checked.",
                             style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                         )
                         TouchInput(app, runner, kit = ex.usesPads)
                     }
                 }
                 Text(
-                    "עובר כשסטיית התקן עד ${ex.passStdMs.roundToInt()}ms ולפחות ${ex.passHitPct.roundToInt()}% פגיעות, " +
-                        "שני סבבים ברצף – ואז הטמפו עולה.",
+                    "Passes with a spread up to ${ex.passStdMs.roundToInt()}ms and at least ${ex.passHitPct.roundToInt()}% hits. " +
+                        "Two passes in a row and the tempo goes up.",
                     style = MaterialTheme.typography.bodySmall, color = Palette.muted,
                 )
             }
@@ -340,8 +340,8 @@ fun PracticeScreen(app: AppState, ex: Exercise, initialBpm: Int? = null) {
             Phase.PREVIEW -> plan?.let { p ->
                 val beat = p.beatAt(runner.playhead)
                 val bar = floor(beat / p.beatsPerBar).toInt().coerceIn(0, p.bars - 1)
-                RoundHeader(if (beat < 0) "ספירה…" else "האפליקציה מנגנת", Palette.accent,
-                    if (beat >= 0) "תיבה ${bar + 1} / ${p.bars}" else null)
+                RoundHeader(if (beat < 0) "Count-in…" else "The app plays", Palette.accent,
+                    if (beat >= 0) "Bar ${bar + 1} / ${p.bars}" else null)
                 Panel { PatternView(app, ex, bar, emptyMap(), if (beat >= 0) (beat - bar * p.beatsPerBar) * ex.subdivision else null) }
                 val lights = appLights(p.clicks, runner.playhead, p.sampleRate, byHand = !ex.usesPads)
                 if (ex.usesPads) DrumKitView(app, appLights = lights) else HandPads(app, appLights = lights)
@@ -406,16 +406,16 @@ private fun LiveRound(
     }
 
     if (beat < 0) {
-        RoundHeader("${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}", Palette.text, "ספירה")
+        RoundHeader("${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}", Palette.text, "Count-in")
     } else {
         val listening = p.listenBars.isNotEmpty() && bar in p.listenBars
         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (p.listenBars.isNotEmpty()) {
-                Text(if (listening) "הקשב" else "תורך", style = MaterialTheme.typography.displaySmall,
+                Text(if (listening) "Listen" else "Your turn", style = MaterialTheme.typography.displaySmall,
                     color = if (listening) Palette.accent else Palette.good)
             }
-            Text("תיבה ${bar + 1} / ${p.bars}" + if (ex.isFillBar(bar)) " · מילוי" else "",
+            Text("Bar ${bar + 1} / ${p.bars}" + if (ex.isFillBar(bar)) " · fill" else "",
                 style = if (p.listenBars.isEmpty()) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleMedium,
                 color = if (p.listenBars.isEmpty()) Palette.text else Palette.muted)
             if (p.bars <= 16) Dots(bar, p.bars, current = bar)
@@ -426,7 +426,7 @@ private fun LiveRound(
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         val lh = lastHit
         StatTile(
-            "מכה אחרונה",
+            "Last hit",
             lh?.let { "${fmtMs(it)}" } ?: "—",
             Modifier.weight(1f),
             color = when {
@@ -437,10 +437,10 @@ private fun LiveRound(
             sub = lh?.let { "ms · ${earlyLate(it)}" },
         )
         if (padAware || byHand) {
-            StatTile(if (byHand) "יד שגויה" else "תוף שגוי", "${live.wrongDrum.size}", Modifier.weight(1f),
+            StatTile(if (byHand) "Wrong hand" else "Wrong drum", "${live.wrongDrum.size}", Modifier.weight(1f),
                 color = if (live.wrongDrum.isEmpty()) Palette.muted else Palette.wrong)
         }
-        StatTile("מיותרות", "${live.extras.size}", Modifier.weight(1f),
+        StatTile("Extra", "${live.extras.size}", Modifier.weight(1f),
             color = if (live.extras.isEmpty()) Palette.muted else Palette.bad)
     }
 }
@@ -460,8 +460,8 @@ private fun distinctBars(ex: Exercise): List<Pair<IntRange, String?>> {
     for (b in 1..ex.cycleBars) {
         if (b < ex.cycleBars && content(b) == content(start)) continue
         val range = start until b
-        val name = if (range.first == range.last) "תיבה ${range.first + 1}" else "תיבות $LRM${range.first + 1}–${range.last + 1}"
-        out += range to name + if (ex.isFillBar(range.first)) " · מילוי" else ""
+        val name = if (range.first == range.last) "Bar ${range.first + 1}" else "Bars ${range.first + 1}–${range.last + 1}"
+        out += range to name + if (ex.isFillBar(range.first)) " · fill" else ""
         start = b
     }
     return out
@@ -483,15 +483,15 @@ fun PatternView(app: AppState, ex: Exercise, bar: Int, states: Map<CellKey, Step
 @Composable
 fun ViewToggle(app: AppState) {
     TextButton(onClick = { app.settings.updateNotation(!app.settings.notation) }, contentPadding = PaddingValues(horizontal = 10.dp)) {
-        Text(if (app.settings.notation) "רשת" else "תווים", style = MaterialTheme.typography.labelLarge)
+        Text(if (app.settings.notation) "Grid" else "Notation", style = MaterialTheme.typography.labelLarge)
     }
 }
 
 @Composable
 private fun SelfRating(onRate: (Int?) -> Unit) {
     Panel(padding = 20.dp, spacing = 16.dp) {
-        Text("איך הרגיש הסבב?", style = MaterialTheme.typography.headlineSmall)
-        Text("קודם תחושה, אחר כך מספרים – כך האוזן הפנימית לומדת לשפוט את עצמה.",
+        Text("How did that feel?", style = MaterialTheme.typography.headlineSmall)
+        Text("Feeling first, numbers second: that's how your inner ear learns to judge itself.",
             style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -503,11 +503,11 @@ private fun SelfRating(onRate: (Int?) -> Unit) {
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                Text("מפוזר", style = MaterialTheme.typography.bodySmall, color = Palette.muted, modifier = Modifier.weight(1f))
-                Text("נעול על הקליק", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+                Text("All over", style = MaterialTheme.typography.bodySmall, color = Palette.muted, modifier = Modifier.weight(1f))
+                Text("Locked in", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
             }
         }
-        TextButton(onClick = { onRate(null) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("דלג") }
+        TextButton(onClick = { onRate(null) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Skip") }
     }
 }
 
@@ -520,80 +520,80 @@ private fun RoundResults(ex: Exercise, o: Outcome, byHand: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             IconBadge(if (o.passed) Icons.Filled.Check else Icons.Filled.Refresh, tone, size = 52.dp)
             Column {
-                Text(if (o.passed) "עבר" else "עוד לא", style = MaterialTheme.typography.displaySmall, color = tone)
-                Text("$LRI${o.bpm} BPM$PDI", style = MaterialTheme.typography.titleMedium, color = Palette.muted)
+                Text(if (o.passed) "Passed" else "Not yet", style = MaterialTheme.typography.displaySmall, color = tone)
+                Text("${o.bpm} BPM", style = MaterialTheme.typography.titleMedium, color = Palette.muted)
             }
         }
         Text(
             when {
-                o.tempoUp -> "שני סבבים רצופים מעל הסף – הטמפו עולה ל-$LRI${o.nextBpm} BPM$PDI."
-                o.passed -> "עוד סבב אחד מעל הסף והטמפו יעלה."
-                else -> "הטמפו נשאר $LRI${o.bpm} BPM$PDI. דיוק לפני מהירות."
+                o.tempoUp -> "Two passes in a row: the tempo goes up to ${o.nextBpm} BPM."
+                o.passed -> "One more pass and the tempo goes up."
+                else -> "The tempo stays at ${o.bpm} BPM. Accuracy before speed."
             },
             style = MaterialTheme.typography.bodyLarge,
         )
     }
     if (s.hits == 0) {
-        Banner("לא זוהו מכות. בדוק במסך הכיול שמד הרמה זז כשאתה מכה.", Palette.off)
+        Banner("No hits detected. Check on the calibration screen that the level meter moves when you play.", Palette.off)
         return
     }
     StatGrid {
-        StatTile("סטיית תקן", "${fmt1(s.stdMs)}ms", Modifier.weight(1f),
-            color = if (s.stdMs <= ex.passStdMs) Palette.good else Palette.off, sub = "יציבות · המדד המרכזי")
-        StatTile("סטייה ממוצעת", "${fmtMs(s.meanMs)}ms", Modifier.weight(1f), sub = earlyLate(s.meanMs))
-        StatTile("פגיעות", "${s.hitPct.roundToInt()}%", Modifier.weight(1f),
-            color = if (s.hitPct >= ex.passHitPct) Palette.good else Palette.off, sub = "$LRM${s.hits} / ${s.expected}")
-        StatTile("מכות מיותרות", "${s.extras}", Modifier.weight(1f), color = if (s.extras == 0) Palette.good else Palette.bad)
+        StatTile("Spread (SD)", "${fmt1(s.stdMs)}ms", Modifier.weight(1f),
+            color = if (s.stdMs <= ex.passStdMs) Palette.good else Palette.off, sub = "Steadiness · the key number")
+        StatTile("Average offset", "${fmtMs(s.meanMs)}ms", Modifier.weight(1f), sub = earlyLate(s.meanMs))
+        StatTile("Hits", "${s.hitPct.roundToInt()}%", Modifier.weight(1f),
+            color = if (s.hitPct >= ex.passHitPct) Palette.good else Palette.off, sub = "${s.hits} / ${s.expected}")
+        StatTile("Extra hits", "${s.extras}", Modifier.weight(1f), color = if (s.extras == 0) Palette.good else Palette.bad)
         if (ex.usesPads || byHand) {
-            StatTile(if (byHand) "יד שגויה" else "תוף שגוי", "${s.wrongDrum}", Modifier.weight(1f),
+            StatTile(if (byHand) "Wrong hand" else "Wrong drum", "${s.wrongDrum}", Modifier.weight(1f),
                 color = if (s.wrongDrum == 0) Palette.good else Palette.wrong)
         }
-        s.accentDb?.let { StatTile("הדגשה מול רגיל", "${fmt1(it)}dB", Modifier.weight(1f), sub = "כמה ההדגשה חזקה יותר") }
+        s.accentDb?.let { StatTile("Accent vs normal", "${fmt1(it)}dB", Modifier.weight(1f), sub = "How much louder accents are") }
     }
-    Section("התפלגות הסטיות") {
+    Section("Offsets") {
         DeviationHistogram(s.histogram)
-        Text("ירוק: עד ${GOOD_MS.roundToInt()}ms מהקליק. שמאלה – מקדים, ימינה – מאחר.",
+        Text("Green: within ${GOOD_MS.roundToInt()}ms of the click. Left is early, right is late.",
             style = MaterialTheme.typography.bodySmall, color = Palette.muted)
     }
     if (s.perHand.size > 1) {
-        Section("לפי יד") {
+        Section("By hand") {
             StatGrid {
                 s.perHand.toSortedMap(compareByDescending { it == 'R' }).forEach { (hand, sp) ->
-                    StatTile(if (hand == 'R') "יד ימין" else "יד שמאל", "${fmt1(sp.stdMs)}ms", Modifier.weight(1f),
-                        sub = "ממוצע ${fmtMs(sp.meanMs)}ms · ${earlyLate(sp.meanMs)}")
+                    StatTile(if (hand == 'R') "Right hand" else "Left hand", "${fmt1(sp.stdMs)}ms", Modifier.weight(1f),
+                        sub = "avg ${fmtMs(sp.meanMs)}ms · ${earlyLate(sp.meanMs)}")
                 }
             }
         }
     }
     if (s.landing.n > 0) {
-        Section("מילוי ונחיתה") {
+        Section("Fill and landing") {
             StatGrid {
-                StatTile("נחיתה על ה-1", "${fmtMs(s.landing.meanMs)}ms", Modifier.weight(1f), sub = earlyLate(s.landing.meanMs),
+                StatTile("Landing on 1", "${fmtMs(s.landing.meanMs)}ms", Modifier.weight(1f), sub = earlyLate(s.landing.meanMs),
                     color = if (abs(s.landing.meanMs) <= ex.passStdMs * 1.5) Palette.good else Palette.off)
-                if (s.fill.n > 0) StatTile("בתוך המילוי", "${fmtMs(s.fill.meanMs)}ms", Modifier.weight(1f), sub = "פיזור ${fmt1(s.fill.stdMs)}ms")
-                if (s.groove.n > 0) StatTile("בגרוב", "${fmtMs(s.groove.meanMs)}ms", Modifier.weight(1f), sub = "פיזור ${fmt1(s.groove.stdMs)}ms")
+                if (s.fill.n > 0) StatTile("In the fill", "${fmtMs(s.fill.meanMs)}ms", Modifier.weight(1f), sub = "spread ${fmt1(s.fill.stdMs)}ms")
+                if (s.groove.n > 0) StatTile("In the groove", "${fmtMs(s.groove.meanMs)}ms", Modifier.weight(1f), sub = "spread ${fmt1(s.groove.stdMs)}ms")
             }
             if (s.fill.n > 0 && s.fill.meanMs < s.groove.meanMs - 5) {
-                Text("במילוי אתה מקדים ביחס לגרוב – נסה לחשוב על המילוי כהמשך של אותו קצב.",
+                Text("You rush the fill compared with the groove. Think of the fill as the same time, continued.",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.off)
             }
         }
     }
     if (s.perPad.size > 1) {
-        Section("לפי תוף") {
+        Section("By drum") {
             StatGrid {
                 s.perPad.toSortedMap(compareBy { it.ordinal }).forEach { (pad, sp) ->
-                    StatTile(pad.he, "${fmt1(sp.stdMs)}ms", Modifier.weight(1f), sub = "ממוצע ${fmtMs(sp.meanMs)}ms · ${earlyLate(sp.meanMs)}")
+                    StatTile(pad.label, "${fmt1(sp.stdMs)}ms", Modifier.weight(1f), sub = "avg ${fmtMs(sp.meanMs)}ms · ${earlyLate(sp.meanMs)}")
                 }
             }
         }
     }
     if (ex.subdivision > 1) {
         val names = positionNames(ex.subdivision)
-        Section("לפי מיקום בנקישה") {
+        Section("By position in the beat") {
             StatGrid {
                 s.byBeatPosition.forEachIndexed { i, sp ->
-                    if (sp.n > 0) StatTile(names[i], "${fmtMs(sp.meanMs)}ms", Modifier.weight(1f), sub = "פיזור ${fmt1(sp.stdMs)}ms")
+                    if (sp.n > 0) StatTile(names[i], "${fmtMs(sp.meanMs)}ms", Modifier.weight(1f), sub = "spread ${fmt1(sp.stdMs)}ms")
                 }
             }
         }

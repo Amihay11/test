@@ -83,15 +83,15 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
 
     val p = plan
     Page(
-        "נגינה חופשית",
-        subtitle = "עם ${ex.nameHe}",
+        "Free play",
+        subtitle = "with ${ex.name}",
         onBack = {
             job?.cancel()
             app.screen = app.home
         },
         bottomBar = {
-            if (p != null) QuietButton("סיום", { job?.cancel() }, Modifier.fillMaxWidth())
-            else PrimaryButton(if (result == null) "התחל · $FREE_PLAY_BARS תיבות" else "עוד פעם", ::start,
+            if (p != null) QuietButton("Finish", { job?.cancel() }, Modifier.fillMaxWidth())
+            else PrimaryButton(if (result == null) "Start · $FREE_PLAY_BARS bars" else "Again", ::start,
                 icon = Icons.Filled.PlayArrow)
         },
     ) {
@@ -101,29 +101,29 @@ fun FreePlayScreen(app: AppState, ex: Exercise, initialBpm: Int) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     if (beat < 0) "${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}"
-                    else "תיבה ${(floor(beat / p.beatsPerBar).toInt() + 1).coerceAtMost(p.bars)}",
+                    else "Bar ${(floor(beat / p.beatsPerBar).toInt() + 1).coerceAtMost(p.bars)}",
                     style = MaterialTheme.typography.displayMedium,
                 )
-                Text(if (beat < 0) "ספירה" else "מתוך ${p.bars} · ${runner.onsets.size} מכות",
+                Text(if (beat < 0) "Count-in" else "of ${p.bars} · ${runner.onsets.size} hits",
                     style = MaterialTheme.typography.titleMedium, color = Palette.muted)
             }
             if (runner.touchInput) TouchInput(app, runner, kit = ex.usesPads)
             return@Page
         }
         Text(
-            "האפליקציה מנגנת לופ של בס ואקורדים בסגנון של ${ex.nameHe}, ואתה מנגן מה שבא לך: הגרוב, וריאציות, " +
-                "מילויים, שקט. אין ציון – בסוף רק תמונה של הזמן.",
+            "The app plays a bass and chords loop in the style of ${ex.name}, and you play whatever you like: the groove, variations, " +
+                "fills, space. No score, just a picture of your time at the end.",
             style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
         result?.let { r ->
             StatGrid {
-                StatTile("מכות", "${r.hits}", Modifier.weight(1f))
+                StatTile("Hits", "${r.hits}", Modifier.weight(1f))
                 if (r.hits > 0) {
-                    StatTile("על הגריד", "${r.onGridPct.roundToInt()}%", Modifier.weight(1f), sub = "בתוך רבע שש-עשרית")
-                    StatTile("פיזור", "${fmt1(r.stdMs)}ms", Modifier.weight(1f), sub = "ממוצע ${fmtMs(r.meanMs)}ms · ${earlyLate(r.meanMs)}")
+                    StatTile("On the grid", "${r.onGridPct.roundToInt()}%", Modifier.weight(1f), sub = "within a quarter of a 16th")
+                    StatTile("Spread", "${fmt1(r.stdMs)}ms", Modifier.weight(1f), sub = "avg ${fmtMs(r.meanMs)}ms · ${earlyLate(r.meanMs)}")
                 }
             }
         }
-        Section("טמפו") { TempoControl(bpm, { bpm = it }) }
+        Section("Tempo") { TempoControl(bpm, { bpm = it }) }
     }
 }

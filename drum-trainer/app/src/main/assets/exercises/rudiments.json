@@ -2,8 +2,7 @@
   {
     "id": "single_stroke_roll",
     "name": "Single Stroke Roll",
-    "nameHe": "מכות בודדות",
-    "tip": "יד ימין ושמאל לסירוגין; שתי הידיים באותו גובה מקל ובאותה עוצמה.",
+    "tip": "Alternate right and left; both hands at the same stick height and the same volume.",
     "subdivision": 4,
     "pattern": "R L R L",
     "startBpm": 60,
@@ -12,8 +11,7 @@
   {
     "id": "double_stroke_roll",
     "name": "Double Stroke Roll",
-    "nameHe": "מכות כפולות",
-    "tip": "המכה השנייה בכל זוג נוטה להיות חלשה ומאוחרת – כוון אותה לעוצמה של הראשונה.",
+    "tip": "The second stroke of each pair tends to be weak and late. Aim it at the volume of the first.",
     "subdivision": 4,
     "pattern": "R R L L",
     "startBpm": 60,
@@ -22,8 +20,7 @@
   {
     "id": "single_paradiddle",
     "name": "Single Paradiddle",
-    "nameHe": "פרדידל",
-    "tip": "הדגש את המכה הראשונה בכל קבוצה; היד שמתחילה מתחלפת כל פעם.",
+    "tip": "Accent the first stroke of each group; the leading hand switches every time.",
     "subdivision": 4,
     "pattern": "^R L R R ^L R L L",
     "startBpm": 60,
@@ -32,8 +29,7 @@
   {
     "id": "double_paradiddle",
     "name": "Double Paradiddle",
-    "nameHe": "פרדידל כפול",
-    "tip": "שש מכות לנקישה: הקבוצה נוחתת על הנקישה רק כל שתי נקישות.",
+    "tip": "Six strokes per beat: the group lands on the beat only every second beat.",
     "subdivision": 6,
     "pattern": "^R L R L R R ^L R L R L L",
     "startBpm": 50,
@@ -42,8 +38,7 @@
   {
     "id": "triple_paradiddle",
     "name": "Triple Paradiddle",
-    "nameHe": "פרדידל משולש",
-    "tip": "שמונה מכות לקבוצה; ספור בראש 1-e-&-a כדי לא לאבד את המקום בתיבה.",
+    "tip": "Eight strokes per group. Count 1-e-&-a in your head so you don't lose your place in the bar.",
     "subdivision": 4,
     "pattern": "^R L R L R L R R ^L R L R L R L L",
     "startBpm": 55,
@@ -52,8 +47,7 @@
   {
     "id": "paradiddle_diddle",
     "name": "Paradiddle-diddle",
-    "nameHe": "פרדידל-דידל",
-    "tip": "שתי הכפולות ברצף – תן לסטיק לקפוץ במקום לדחוף אותו.",
+    "tip": "Two doubles in a row: let the stick bounce instead of pushing it.",
     "subdivision": 6,
     "pattern": "^R L R R L L",
     "startBpm": 50,
@@ -62,8 +56,7 @@
   {
     "id": "single_stroke_triplets",
     "name": "Single Stroke Triplets",
-    "nameHe": "טריולות בודדות",
-    "tip": "כל נקישה מתחילה ביד אחרת – הקשב שהנקישה לא נמשכת אל היד החזקה.",
+    "tip": "Each beat starts on the other hand. Listen that the beat isn't pulled toward your strong hand.",
     "subdivision": 3,
     "pattern": "^R L R ^L R L",
     "startBpm": 60,
@@ -72,8 +65,7 @@
   {
     "id": "five_stroke_roll",
     "name": "Five Stroke Roll",
-    "nameHe": "רול חמש מכות",
-    "tip": "ארבע מכות שקטות ומכת הדגשה שנוחתת בדיוק על הנקישה.",
+    "tip": "Four quiet strokes, then an accent landing exactly on the beat.",
     "subdivision": 4,
     "pattern": "R R L L ^R - - - L L R R ^L - - -",
     "startBpm": 60,
@@ -82,8 +74,7 @@
   {
     "id": "six_stroke_roll",
     "name": "Six Stroke Roll",
-    "nameHe": "רול שש מכות",
-    "tip": "הדגשות בהתחלה ובסוף, הכפולות באמצע שקטות.",
+    "tip": "Accents at the start and the end, quiet doubles in the middle.",
     "subdivision": 6,
     "pattern": "^R L L R R ^L",
     "startBpm": 50,
@@ -92,8 +83,7 @@
   {
     "id": "accented_singles",
     "name": "Accented Singles",
-    "nameHe": "מכות בודדות עם הדגשות",
-    "tip": "הדגשה על כל נקישה; שלוש המכות שאחריה שקטות (מכות רפאים).",
+    "tip": "An accent on every beat; the three strokes after it are quiet (ghost notes).",
     "subdivision": 4,
     "pattern": "^R L R L ^R L R L",
     "startBpm": 60,

@@ -57,12 +57,12 @@ object Mastery {
             .sortedBy { it.first }
 }
 
-enum class PartKind(val he: String, val defaultMinutes: Int) {
-    REVIEW("חזרה", 5),
-    TECHNIQUE("טכניקה", 12),
-    TIMING("שמירת קצב", 8),
-    GROOVE("גרוב ומעבר", 15),
-    FREE("נגינה חופשית", 5),
+enum class PartKind(val label: String, val defaultMinutes: Int) {
+    REVIEW("Review", 5),
+    TECHNIQUE("Technique", 12),
+    TIMING("Time keeping", 8),
+    GROOVE("Groove & fill", 15),
+    FREE("Free play", 5),
 }
 
 /** One thing to play: an exercise or a gap-metronome setup, at a tempo, and why. */
@@ -75,7 +75,7 @@ data class SessionPlan(val parts: List<SessionPart>) {
 }
 
 /**
- * Builds a five-part session from past results (see spec, "מבנה אימון ותוכנית"):
+ * Builds a five-part session from past results (see the spec, "training structure and plan"):
  * review of the previous session at 90 % of the tempo reached, one new and one
  * in-progress rudiment, a gap-metronome step, a groove and a fill, and free play.
  */
@@ -116,7 +116,7 @@ object SessionPlanner {
                 .entries.take(2)
                 .forEach { (id, rs) ->
                     val reached = rs.filter { it.passed }.maxOfOrNull { it.bpm } ?: rs.maxOf { it.bpm }
-                    review += SessionItem(id, null, (reached * REVIEW_FACTOR).roundToInt(), "מהאימון הקודם, ב-90% מהטמפו שהושג")
+                    review += SessionItem(id, null, (reached * REVIEW_FACTOR).roundToInt(), "From last session, at 90% of the tempo reached")
                 }
         }
         exercises.filter { it.id in mastered && it.id !in review.map { r -> r.exerciseId } }
@@ -124,16 +124,16 @@ object SessionPlanner {
             .minByOrNull { lastPlayed[it.id] ?: 0 }
             ?.let { ex ->
                 val best = Mastery.bestPassedBpm(ex.id, runs) ?: ex.targetBpm
-                review += SessionItem(ex.id, null, (best * REVIEW_FACTOR).roundToInt(), "חזרה מרווחת: נשלט, לא נוגן ${REVIEW_AFTER_DAYS}+ ימים")
+                review += SessionItem(ex.id, null, (best * REVIEW_FACTOR).roundToInt(), "Spaced review: mastered, not played for ${REVIEW_AFTER_DAYS}+ days")
             }
         // 2. Technique: one new rudiment and one in progress (least recently played).
         val rudiments = exercises.filter { it.kind == ExerciseKind.RUDIMENT }
         val newOnes = rudiments.filter { it.id !in lastPlayed }
         val inProgress = rudiments.filter { it.id in lastPlayed && it.id !in mastered }.sortedBy { lastPlayed[it.id] }
-        val technique = (inProgress.take(1).map { SessionItem(it.id, null, bpmFor(it), "בתהליך") } +
-            newOnes.take(if (inProgress.isEmpty()) 2 else 1).map { SessionItem(it.id, null, bpmFor(it), "רודימנט חדש") })
+        val technique = (inProgress.take(1).map { SessionItem(it.id, null, bpmFor(it), "In progress") } +
+            newOnes.take(if (inProgress.isEmpty()) 2 else 1).map { SessionItem(it.id, null, bpmFor(it), "New rudiment") })
             .ifEmpty {
-                rudiments.minByOrNull { lastPlayed[it.id] ?: 0 }?.let { listOf(SessionItem(it.id, null, bpmFor(it), "שמירה על כושר")) }
+                rudiments.minByOrNull { lastPlayed[it.id] ?: 0 }?.let { listOf(SessionItem(it.id, null, bpmFor(it), "Keeping in shape")) }
                     ?: emptyList()
             }
 
@@ -141,7 +141,7 @@ object SessionPlanner {
         if (review.isEmpty()) {
             val inTechnique = technique.map { it.exerciseId }.toSet()
             (rudiments.firstOrNull { it.id !in inTechnique } ?: rudiments.firstOrNull())?.let {
-                review += SessionItem(it.id, null, bpmFor(it), "חימום")
+                review += SessionItem(it.id, null, bpmFor(it), "Warm-up")
             }
         }
 
@@ -151,11 +151,11 @@ object SessionPlanner {
             val setup = GapSetup.fromId(last.exerciseId)!!
             val idx = GapSetup.LADDER.indexOfFirst { it.id == setup.id }.coerceAtLeast(0)
             when {
-                last.stdMs > GAP_STEP_STD_MS -> SessionItem(null, setup, last.bpm, "אותה רמה – לייצב את השקט")
-                idx < GapSetup.LADDER.lastIndex -> SessionItem(null, GapSetup.LADDER[idx + 1], last.bpm, "שקט ארוך יותר")
-                else -> SessionItem(null, setup, last.bpm + SpeedTrainer.STEP_BPM, "אותו דפוס, טמפו גבוה יותר")
+                last.stdMs > GAP_STEP_STD_MS -> SessionItem(null, setup, last.bpm, "Same level: steady the silence")
+                idx < GapSetup.LADDER.lastIndex -> SessionItem(null, GapSetup.LADDER[idx + 1], last.bpm, "Longer silence")
+                else -> SessionItem(null, setup, last.bpm + SpeedTrainer.STEP_BPM, "Same pattern, faster")
             }
-        } ?: SessionItem(null, GapSetup.LADDER.first(), 70, "התחלה: 2 תיבות עם קליק, 2 בלי")
+        } ?: SessionItem(null, GapSetup.LADDER.first(), 70, "Start: 2 bars with the click, 2 without")
 
         // 4. Groove and fill: the next unmastered groove, style by style through the
         //    curriculum, with independence exercises first while their level is not above it.
@@ -168,12 +168,12 @@ object SessionPlanner {
         val fill = exercises.filter { it.kind == ExerciseKind.FILL }.sortedBy { it.level }
             .let { fills -> fills.firstOrNull { it.id !in mastered } ?: fills.lastOrNull() }
         val grooveItems = listOfNotNull(
-            groove?.let { SessionItem(it.id, null, bpmFor(it), "הגרוב הבא") },
-            fill?.let { SessionItem(it.id, null, bpmFor(it), "מילוי ונחיתה") },
+            groove?.let { SessionItem(it.id, null, bpmFor(it), "Next groove") },
+            fill?.let { SessionItem(it.id, null, bpmFor(it), "Fill and landing") },
         )
 
         // 5. Free play over the current groove, without a score.
-        val free = listOfNotNull(groove?.let { SessionItem(it.id, null, bpmFor(it), "לנגן חופשי עם האפליקציה, בלי ציון") })
+        val free = listOfNotNull(groove?.let { SessionItem(it.id, null, bpmFor(it), "Play freely with the app, no score") })
 
         return SessionPlan(
             listOf(
@@ -198,8 +198,8 @@ object SessionReview {
         val inSession = runs.filter { it.sessionId == sessionId }
         val start = inSession.minOfOrNull { it.startedAt } ?: return SessionSummary(emptyList(), emptyList(), emptyList())
         val before = runs.filter { it.startedAt < start }
-        val names = exercises.associate { it.id to it.nameHe }
-        fun name(id: String) = names[id] ?: GapSetup.fromId(id)?.let { "מטרונום עם חורים ${it.onBars}/${it.offBars}" } ?: id
+        val names = exercises.associate { it.id to it.name }
+        fun name(id: String) = names[id] ?: GapSetup.fromId(id)?.let { "Gap click ${it.onBars}/${it.offBars}" } ?: id
 
         val improved = ArrayList<String>()
         val stuck = ArrayList<String>()
@@ -207,12 +207,12 @@ object SessionReview {
             val best = rs.filter { it.passed }.maxOfOrNull { it.bpm }
             val prev = Mastery.bestPassedBpm(id, before)
             when {
-                best != null && prev == null -> improved += "${name(id)}: עבר לראשונה ב-$best BPM"
+                best != null && prev == null -> improved += "${name(id)}: passed for the first time at $best BPM"
                 best != null && best > prev!! -> improved += "${name(id)}: $prev → $best BPM"
-                best == null && rs.size >= 2 -> stuck += "${name(id)}: ${rs.size} סבבים בלי מעבר ב-${rs.maxOf { it.bpm }} BPM"
+                best == null && rs.size >= 2 -> stuck += "${name(id)}: ${rs.size} rounds without a pass at ${rs.maxOf { it.bpm }} BPM"
             }
         }
-        val mastered = exercises.filter { Mastery.isMastered(it, runs) && !Mastery.isMastered(it, before) }.map { it.nameHe }
+        val mastered = exercises.filter { Mastery.isMastered(it, runs) && !Mastery.isMastered(it, before) }.map { it.name }
         return SessionSummary(improved, stuck, mastered)
     }
 }

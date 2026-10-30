@@ -7,15 +7,15 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /** The order matters: the engine's drum sounds are indexed by it (DrumKitSounds.h). */
-enum class Pad(val id: String, val he: String, val short: String) {
-    KICK("kick", "קיק", "K"),
-    SNARE("snare", "סנר", "S"),
-    HIHAT("hihat", "היי-האט", "H"),
-    TOM_HIGH("tom_high", "טום גבוה", "T1"),
-    TOM_MID("tom_mid", "טום אמצעי", "T2"),
-    TOM_FLOOR("tom_floor", "טום רצפה", "T3"),
-    CRASH("crash", "קראש", "C"),
-    RIDE("ride", "רייד", "R");
+enum class Pad(val id: String, val label: String, val short: String) {
+    KICK("kick", "Kick", "K"),
+    SNARE("snare", "Snare", "S"),
+    HIHAT("hihat", "Hi-hat", "H"),
+    TOM_HIGH("tom_high", "High tom", "T1"),
+    TOM_MID("tom_mid", "Mid tom", "T2"),
+    TOM_FLOOR("tom_floor", "Floor tom", "T3"),
+    CRASH("crash", "Crash", "C"),
+    RIDE("ride", "Ride", "R");
 
     companion object {
         fun byId(id: String): Pad? = entries.firstOrNull { it.id == id }

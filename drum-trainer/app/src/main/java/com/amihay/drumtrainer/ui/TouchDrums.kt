@@ -130,10 +130,10 @@ fun DrumKitView(
             // sits below the bell.
             val style = TextStyle(color = if (piece.cymbal) Color(0xFF2B2410) else Color(0xFF1B1F27), fontSize = 13.sp,
                 fontWeight = FontWeight.Bold)
-            var label = measurer.measure(piece.pad.he, style)
+            var label = measurer.measure(piece.pad.label, style)
             val maxW = r * 1.5f
             if (label.size.width > maxW) {
-                label = measurer.measure(piece.pad.he, style.copy(fontSize = 13.sp * (maxW / label.size.width)))
+                label = measurer.measure(piece.pad.label, style.copy(fontSize = 13.sp * (maxW / label.size.width)))
             }
             val y = if (piece.cymbal) c.y + r * 0.45f - label.size.height / 2f else c.y - label.size.height / 2f
             drawText(label, topLeft = Offset(c.x - label.size.width / 2f, y))
@@ -175,7 +175,7 @@ fun HandPads(
                 },
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            for ((hand, name) in listOf('L' to "שמאל", 'R' to "ימין")) {
+            for ((hand, name) in listOf('L' to "Left", 'R' to "Right")) {
                 val lit = maxOf(taps.level(hand.toString()), appLights[hand.toString()] ?: 0f)
                 Box(
                     Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(20.dp))

@@ -120,9 +120,9 @@ class TrainingTest {
         )
         val s = SessionReview.summarize(exercises, runs, 2)
         assertTrue(s.improved.any { it.contains("70 → 74") })
-        assertTrue(s.improved.any { it.contains("עבר לראשונה") })
+        assertTrue(s.improved.any { it.contains("passed for the first time") })
         assertEquals(1, s.stuck.size)
-        assertEquals(listOf(sse.nameHe), s.mastered)
+        assertEquals(listOf(sse.name), s.mastered)
     }
 
     @Test

@@ -45,7 +45,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Progress (spec: "גרף של הטמפו המקסימלי שבו עברת את הסף בכל תרגיל, לאורך השבועות"):
+ * Progress (spec: a chart of the highest tempo at which each exercise passed, over the weeks):
  * a summary, a chart per exercise played so far, and the list of rounds.
  */
 @Composable
@@ -60,25 +60,25 @@ fun ProgressScreen(app: AppState) {
         contentPadding = PaddingValues(horizontal = PagePadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "header") { TabHeader("התקדמות", "הטמפו הגבוה ביותר שבו עברת את הסף, לאורך הזמן") }
+        item(key = "header") { TabHeader("Progress", "The fastest tempo you passed at, over time") }
         item(key = "summary") {
             val days = runs.map { it.startedAt / DAY_MS }.distinct().size
             val mastered = played.count { Mastery.isMastered(it, runs) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("סבבים", "${runs.size}", Modifier.weight(1f))
-                StatTile("ימי אימון", "$days", Modifier.weight(1f))
-                StatTile("נשלטו", "$mastered", Modifier.weight(1f), color = if (mastered > 0) Palette.good else Color.Unspecified)
+                StatTile("Rounds", "${runs.size}", Modifier.weight(1f))
+                StatTile("Days", "$days", Modifier.weight(1f))
+                StatTile("Mastered", "$mastered", Modifier.weight(1f), color = if (mastered > 0) Palette.good else Color.Unspecified)
             }
         }
-        item(key = "toggle") { Segmented(listOf(false to "גרפים", true to "היסטוריה"), showHistory, { showHistory = it }) }
+        item(key = "toggle") { Segmented(listOf(false to "Charts", true to "History"), showHistory, { showHistory = it }) }
         if (showHistory) {
             item(key = "history") { HistoryList(app) }
         } else {
             if (played.isEmpty()) {
                 item(key = "empty") {
                     Panel {
-                        Text("עוד אין סבבים", style = MaterialTheme.typography.titleMedium)
-                        Text("הגרפים יתמלאו אחרי האימונים הראשונים.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+                        Text("No rounds yet", style = MaterialTheme.typography.titleMedium)
+                        Text("The charts fill in after your first sessions.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
                     }
                 }
             }
@@ -87,11 +87,11 @@ fun ProgressScreen(app: AppState) {
                 val mastered = Mastery.isMastered(ex, runs)
                 Panel(onClick = { app.screen = Screen.Practice(ex.id) }, spacing = 8.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(ex.nameHe, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Text(ex.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         when {
-                            mastered -> Pill("נשלט", Palette.good)
-                            history.isEmpty() -> Pill("עוד לא עבר", Palette.muted)
-                            else -> Pill("$LRM${history.maxOf { it.second }} / $LRI${ex.targetBpm} BPM$PDI")
+                            mastered -> Pill("Mastered", Palette.good)
+                            history.isEmpty() -> Pill("Not passed yet", Palette.muted)
+                            else -> Pill("${history.maxOf { it.second }} / ${ex.targetBpm} BPM")
                         }
                     }
                     if (history.isNotEmpty()) TempoChart(history, ex.startBpm, ex.targetBpm)

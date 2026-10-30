@@ -14,7 +14,6 @@ data class Stroke(val hand: Char, val accent: Boolean, val pad: Pad? = null, val
 data class Exercise(
     val id: String,
     val name: String,
-    val nameHe: String,
     val tip: String,
     val kind: ExerciseKind,
     /** Style family for grooves ("rock", "funk"…); null otherwise. */
@@ -138,7 +137,6 @@ object ExerciseParser {
         return Exercise(
             id = id,
             name = o.getString("name"),
-            nameHe = o.getString("nameHe"),
             tip = o.optString("tip", ""),
             kind = kind,
             style = o.optString("style", "").ifEmpty { null },

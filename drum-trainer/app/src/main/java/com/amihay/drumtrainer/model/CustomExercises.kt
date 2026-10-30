@@ -74,15 +74,15 @@ data class ExerciseDraft(
 
     private fun List<Char>.padEnd(n: Int): List<Char> = List(n) { getOrNull(it) ?: '-' }
 
-    /** What is wrong with the draft, in Hebrew; empty when it can be saved. */
+    /** What is wrong with the draft; empty when it can be saved. */
     fun problems(): List<String> {
         val out = ArrayList<String>()
-        if (name.isBlank()) out += "חסר שם"
-        if (bars.none { b -> b.rows.values.any { r -> r.any { it != '-' } } }) out += "אין אף מכה"
-        if (beatGroups != null && beatGroups.sum() != beatsPerBar) out += "הקבוצות (${beatGroups.joinToString("+")}) לא מסתכמות ב-$beatsPerBar"
-        if (kind == DraftKind.GROOVE && pads.isEmpty()) out += "לא נבחרו תופים"
-        if (startBpm > targetBpm) out += "טמפו ההתחלה גבוה מהיעד"
-        if (bars.all { it.fill }) out += "צריך לפחות תיבה אחת שאינה מילוי"
+        if (name.isBlank()) out += "Missing a name"
+        if (bars.none { b -> b.rows.values.any { r -> r.any { it != '-' } } }) out += "No hits yet"
+        if (beatGroups != null && beatGroups.sum() != beatsPerBar) out += "Groups (${beatGroups.joinToString("+")}) don't add up to $beatsPerBar"
+        if (kind == DraftKind.GROOVE && pads.isEmpty()) out += "No drums chosen"
+        if (startBpm > targetBpm) out += "Start tempo is above the target"
+        if (bars.all { it.fill }) out += "At least one bar must not be a fill"
         return out
     }
 
@@ -90,7 +90,6 @@ data class ExerciseDraft(
         val o = JSONObject()
             .put("id", id)
             .put("name", name)
-            .put("nameHe", name)
             .put("subdivision", subdivision)
             .put("beatsPerBar", beatsPerBar)
             .put("startBpm", startBpm)
@@ -164,7 +163,7 @@ data class ExerciseDraft(
                 DraftBar(rows, ex.isFillBar(b))
             }
             return ExerciseDraft(
-                id = ex.id, name = ex.nameHe, kind = if (sticking) DraftKind.STICKING else DraftKind.GROOVE,
+                id = ex.id, name = ex.name, kind = if (sticking) DraftKind.STICKING else DraftKind.GROOVE,
                 beatsPerBar = ex.beatsPerBar, subdivision = ex.subdivision, beatUnit = ex.beatUnit,
                 beatGroups = ex.beatGroups, pads = pads, bars = bars,
                 startBpm = ex.startBpm, targetBpm = ex.targetBpm, swing = ex.swing,

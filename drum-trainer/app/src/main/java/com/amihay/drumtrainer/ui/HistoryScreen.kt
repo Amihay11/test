@@ -31,12 +31,12 @@ import kotlin.math.roundToInt
 fun HistoryList(app: AppState) {
     val runsFlow = remember { app.dao.recentRuns(200) }
     val runs by runsFlow.collectAsState(initial = emptyList())
-    val names = app.exercises.associate { it.id to it.nameHe }
+    val names = app.exercises.associate { it.id to it.name }
     val dateFmt = remember { SimpleDateFormat("d/M · HH:mm", Locale.getDefault()) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (runs.isEmpty()) {
-            Text("עוד אין סבבים שמורים.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+            Text("No rounds saved yet.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
         }
         runs.forEach { r ->
             Row(
@@ -46,11 +46,11 @@ fun HistoryList(app: AppState) {
             ) {
                 Box(Modifier.size(10.dp).background(if (r.passed) Palette.good else Palette.pending, CircleShape))
                 Column(Modifier.weight(1f)) {
-                    val title = (if (r.mode.startsWith("gap")) "מטרונום עם חורים" else names[r.exerciseId] ?: r.exerciseId) +
-                        if (r.mode.endsWith(TOUCH_TAG)) " · במסך" else ""
+                    val title = (if (r.mode.startsWith("gap")) "Gap click" else names[r.exerciseId] ?: r.exerciseId) +
+                        if (r.mode.endsWith(TOUCH_TAG)) " · on screen" else ""
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "${dateFmt.format(Date(r.startedAt))} · $LRI${r.bpm} BPM$PDI" + (r.selfRating?.let { " · תחושה $it/5" } ?: ""),
+                        "${dateFmt.format(Date(r.startedAt))} · ${r.bpm} BPM" + (r.selfRating?.let { " · felt $it/5" } ?: ""),
                         style = MaterialTheme.typography.bodySmall, color = Palette.muted,
                     )
                 }

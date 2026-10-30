@@ -12,42 +12,42 @@ import com.amihay.drumtrainer.data.SAMPLE_CREDIT
 @Composable
 fun SettingsScreen(app: AppState) {
     val s = app.settings
-    Page("הגדרות", onBack = { app.screen = Screen.Home }) {
-        Section("נגינה") {
+    Page("Settings", onBack = { app.screen = Screen.Home }) {
+        Section("Playing") {
             ListRow(
-                "אימון בלי תופים",
-                "מקישים על המסך במקום לנגן – בשתי ידיים, או על מערכת מצוירת",
+                "Practice without drums",
+                "Tap the screen instead of playing: two hand pads, or a drawn kit",
                 AppIcons.Tap,
                 onClick = { s.updateTouchInput(!s.touchInput) },
             ) { Switch(checked = s.touchInput, onCheckedChange = { s.updateTouchInput(it) }) }
-            Field("תיבות בכל סבב") {
+            Field("Bars per round") {
                 Segmented(listOf(2, 4, 8, 16).map { it to "$it" }, s.barsPerRound, { s.updateBarsPerRound(it) })
             }
-            Field("אורך אימון יומי") {
-                Segmented(listOf(30, 45, 60).map { it to "$it דק'" }, s.sessionMinutes, { s.updateSessionMinutes(it) })
+            Field("Daily session length") {
+                Segmented(listOf(30, 45, 60).map { it to "$it min" }, s.sessionMinutes, { s.updateSessionMinutes(it) })
             }
         }
-        Section("כיול וזיהוי") {
+        Section("Calibration and detection") {
             ListRow(
-                "כיול",
+                "Calibration",
                 when {
-                    s.isCalibrated -> "השהיה: ${fmt1(s.padOffsetMs)}ms"
-                    else -> "עוד לא כויל"
-                } + if (!s.touchOffsetMs.isNaN()) " · מסך: ${fmt1(s.touchOffsetMs)}ms" else "",
+                    s.isCalibrated -> "Latency: ${fmt1(s.padOffsetMs)}ms"
+                    else -> "Not calibrated yet"
+                } + if (!s.touchOffsetMs.isNaN()) " · screen: ${fmt1(s.touchOffsetMs)}ms" else "",
                 Icons.Filled.Settings,
                 onClick = { app.screen = Screen.Calibration },
             )
             ListRow(
-                "לימוד התופים שלך",
-                "${app.classifier.pads.size} מתוך 8 תופים נלמדו",
+                "Learn your drums",
+                "${app.classifier.pads.size} of 8 drums learned",
                 AppIcons.Drum,
                 onClick = { app.screen = Screen.Kit },
             )
         }
-        Section("קרדיטים") {
-            ListRow("צלילים", SAMPLE_CREDIT, Icons.Filled.Info)
-            ListRow("גופן", "Rubik, ברישיון SIL Open Font License 1.1", Icons.Filled.Info)
+        Section("Credits") {
+            ListRow("Sounds", SAMPLE_CREDIT, Icons.Filled.Info)
+            ListRow("Font", "Rubik, under the SIL Open Font License 1.1", Icons.Filled.Info)
         }
-        Text("מאמן תופים · למדוד במקום ללמד", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
+        Text("Drum Trainer · measure, don't lecture", style = MaterialTheme.typography.bodySmall, color = Palette.muted)
     }
 }

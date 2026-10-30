@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** Who recorded the drum sounds (CC BY 3.0 asks for credit). */
-const val SAMPLE_CREDIT = "דגימות התופים: Pearl Master Studio Pack 1 מאת enoe, ברישיון CC BY 3.0"
+const val SAMPLE_CREDIT = "Drum samples: Pearl Master Studio Pack 1 by enoe, licensed CC BY 3.0"
 
 /** A mono 16-bit WAV decoded to floats. */
 class PcmSound(val samples: FloatArray, val sampleRate: Int)

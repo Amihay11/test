@@ -88,10 +88,10 @@ fun CalibrationScreen(app: AppState) {
         }
         val r = CalibrationMath.medianDelay(clicks.map { it.frame.toDouble() }, runner.onsets, -50.0, 400.0, sr)
         message = if (r == null) {
-            "לא זוהו מספיק קליקים. הגבר את עוצמת הטלפון, הקרב אותו או הגבר את הרגישות."
+            "Not enough clicks detected. Turn the phone up, move it closer, or raise the sensitivity."
         } else {
             app.settings.updateLoopback(r.medianMs)
-            "השהיית רמקול→מיקרופון: ${fmt1(r.medianMs)}ms (${r.matched}/12 קליקים, פיזור ${fmt1(r.spreadMs)}ms)"
+            "Speaker → mic delay: ${fmt1(r.medianMs)}ms (${r.matched}/12 clicks, spread ${fmt1(r.spreadMs)}ms)"
         }
         phase = CalPhase.IDLE
     }
@@ -110,12 +110,12 @@ fun CalibrationScreen(app: AppState) {
         val measured = clicks.drop(PAD_COUNT_IN).map { it.frame.toDouble() }
         val r = CalibrationMath.medianDelay(measured, runner.onsets, -100.0, 400.0, sr)
         message = when {
-            r == null -> "לא זוהו מספיק מכות. בדוק שהרמקול של המודול פתוח ושמד הרמה זז כשאתה מכה."
-            r.spreadMs > 12 -> "הפיזור גבוה (${fmt1(r.spreadMs)}ms) – כדאי לנסות שוב, הכי צמוד לקליק שאפשר."
+            r == null -> "Not enough hits detected. Check that the module's speaker is on and the level meter moves when you play."
+            r.spreadMs > 12 -> "The spread is high (${fmt1(r.spreadMs)}ms). Try again, as tight to the click as you can."
                 .also { app.settings.updatePadOffset(r.medianMs) }
             else -> {
                 app.settings.updatePadOffset(r.medianMs)
-                "השהיה כוללת: ${fmt1(r.medianMs)}ms (${r.matched}/$PAD_BEATS מכות, פיזור ${fmt1(r.spreadMs)}ms). נשמר."
+                "Total delay: ${fmt1(r.medianMs)}ms (${r.matched}/$PAD_BEATS hits, spread ${fmt1(r.spreadMs)}ms). Saved."
             }
         }
         phase = CalPhase.IDLE
@@ -139,35 +139,35 @@ fun CalibrationScreen(app: AppState) {
         }
         val r = CalibrationMath.medianDelay(clicks.drop(PAD_COUNT_IN).map { it.frame.toDouble() }, runner.onsets, -100.0, 400.0, sr)
         message = if (r == null) {
-            "לא נקלטו מספיק הקשות. הקש על הפד יחד עם כל קליק."
+            "Not enough taps. Tap the pad together with every click."
         } else {
             app.settings.updateTouchOffset(r.medianMs)
-            "השהיית המסך: ${fmt1(r.medianMs)}ms (${r.matched}/$PAD_BEATS הקשות, פיזור ${fmt1(r.spreadMs)}ms). נשמר."
+            "Screen delay: ${fmt1(r.medianMs)}ms (${r.matched}/$PAD_BEATS taps, spread ${fmt1(r.spreadMs)}ms). Saved."
         }
         phase = CalPhase.IDLE
     }
 
-    Page("כיול", onBack = if (phase == CalPhase.IDLE) ({ app.screen = Screen.Settings }) else null) {
+    Page("Calibration", onBack = if (phase == CalPhase.IDLE) ({ app.screen = Screen.Settings }) else null) {
         Text(
-            "הנח את הטלפון במקום שבו הוא יעמוד באימון, במרחק של כמטר מהרמקול של התופים. " +
-                "את הכיול מספיק לעשות פעם אחת, ושוב רק אם מזיזים רמקול, טלפון או מודול.",
+            "Put the phone where it will sit during practice, about a meter from the drum speaker. " +
+                "Calibrate once, and again only if you move the speaker, the phone or the module.",
             style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
         message?.let { Banner(it, Palette.accent) }
         if (!app.engine.timestampsAligned) {
-            Banner("המכשיר לא מדווח חותמות זמן לאודיו – חזור על הכיול בכל פתיחה של האפליקציה.", Palette.off)
+            Banner("This device doesn't report audio timestamps, so repeat the calibration every time you open the app.", Palette.off)
         }
 
-        Section("מיקרופון ורגישות") {
-            Text("הכה על הפד: העיגול צריך להבהב פעם אחת לכל מכה, ולא להבהב בשקט.", style = MaterialTheme.typography.bodyMedium)
+        Section("Microphone and sensitivity") {
+            Text("Hit the pad: the circle should flash once per hit, and never in silence.", style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 val flashing = now - lastHitAt < 120
                 Box(Modifier.size(48.dp).background(if (flashing) Palette.good else Palette.pending, CircleShape))
-                Text("$hitCount מכות", style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { hitCount = 0 }) { Text("איפוס") }
+                Text("$hitCount hits", style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = { hitCount = 0 }) { Text("Reset") }
             }
             LevelMeter(level, Modifier.fillMaxWidth())
-            Text("רגישות: ${(app.settings.sensitivity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            Text("Sensitivity: ${(app.settings.sensitivity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
             Slider(
                 value = app.settings.sensitivity,
                 onValueChange = {
@@ -177,28 +177,28 @@ fun CalibrationScreen(app: AppState) {
             )
         }
 
-        Section("שלב 1 · השהיית הטלפון") {
-            Text("הטלפון ישמיע 12 קליקים ויקשיב להם. שקט בחדר, אל תנגן.", style = MaterialTheme.typography.bodyMedium)
+        Section("Step 1 · Phone latency") {
+            Text("The phone plays 12 clicks and listens to them. Keep the room quiet and don't play.", style = MaterialTheme.typography.bodyMedium)
             Text(
-                "נמדד: " + if (app.settings.loopbackMs.isNaN()) "עוד לא" else "${fmt1(app.settings.loopbackMs)}ms",
+                "Measured: " + if (app.settings.loopbackMs.isNaN()) "not yet" else "${fmt1(app.settings.loopbackMs)}ms",
                 style = MaterialTheme.typography.titleMedium,
             )
-            SecondaryButton(if (phase == CalPhase.LOOPBACK) "מודד…" else "מדוד השהיה", { runLoopback() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
+            SecondaryButton(if (phase == CalPhase.LOOPBACK) "Measuring…" else "Measure latency", { runLoopback() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
-        Section("שלב 2 · נגינה עם הקליק") {
+        Section("Step 2 · Play with the click") {
             Text(
-                "אחרי ספירה של 4, נגן רבעים על הסנר יחד עם הקליק – $PAD_BEATS מכות ב-$LRI$PAD_BPM BPM$PDI. " +
-                    "האפליקציה מודדת את ההשהיה של המודול והרמקול ומקזזת אותה מכל מדידה.",
+                "After a count of 4, play quarter notes on the snare with the click: $PAD_BEATS hits at $PAD_BPM BPM. " +
+                    "The app measures the delay of your module and speaker and takes it off every measurement.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                "השהיה כוללת: " + if (app.settings.padOffsetMs.isNaN()) "עוד לא" else "${fmt1(app.settings.padOffsetMs)}ms",
+                "Total delay: " + if (app.settings.padOffsetMs.isNaN()) "not yet" else "${fmt1(app.settings.padOffsetMs)}ms",
                 style = MaterialTheme.typography.titleMedium,
             )
             if (!app.settings.padOffsetMs.isNaN() && !app.settings.loopbackMs.isNaN()) {
                 Text(
-                    "מתוכה מודול ורמקול: כ-${fmt1(app.settings.padOffsetMs - app.settings.loopbackMs)}ms",
+                    "Of which module and speaker: about ${fmt1(app.settings.padOffsetMs - app.settings.loopbackMs)}ms",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
                 )
             }
@@ -208,22 +208,22 @@ fun CalibrationScreen(app: AppState) {
                     when {
                         beatIdx < 0 -> "…"
                         beatIdx < PAD_COUNT_IN -> "${beatIdx + 1}"
-                        else -> "נגן! ${(beatIdx - PAD_COUNT_IN + 1).coerceAtMost(PAD_BEATS)} / $PAD_BEATS"
+                        else -> "Play! ${(beatIdx - PAD_COUNT_IN + 1).coerceAtMost(PAD_BEATS)} / $PAD_BEATS"
                     },
                     style = MaterialTheme.typography.displayMedium,
                 )
             }
-            SecondaryButton(if (phase == CalPhase.PAD) "מקשיב…" else "התחל", { runPad() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
+            SecondaryButton(if (phase == CalPhase.PAD) "Listening…" else "Start", { runPad() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
-        Section("אימון בלי תופים · השהיית המסך") {
+        Section("Practice without drums · Screen latency") {
             Text(
-                "מסך מגע מדווח על הקשה באיחור של כמה עשרות מילישניות. אחרי ספירה של 4, הקש $PAD_BEATS רבעים " +
-                    "על אחד הפדים יחד עם הקליק, והאפליקציה תקזז את האיחור הזה.",
+                "A touch screen reports a tap tens of milliseconds late. After a count of 4, tap $PAD_BEATS quarter notes " +
+                    "on either pad with the click, and the app takes that delay off.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                "השהיית המסך: " + if (app.settings.touchOffsetMs.isNaN()) "עוד לא" else "${fmt1(app.settings.touchOffsetMs)}ms",
+                "Screen delay: " + if (app.settings.touchOffsetMs.isNaN()) "not yet" else "${fmt1(app.settings.touchOffsetMs)}ms",
                 style = MaterialTheme.typography.titleMedium,
             )
             if (phase == CalPhase.TOUCH) {
@@ -232,13 +232,13 @@ fun CalibrationScreen(app: AppState) {
                     when {
                         beatIdx < 0 -> "…"
                         beatIdx < PAD_COUNT_IN -> "${beatIdx + 1}"
-                        else -> "הקש! ${(beatIdx - PAD_COUNT_IN + 1).coerceAtMost(PAD_BEATS)} / $PAD_BEATS"
+                        else -> "Tap! ${(beatIdx - PAD_COUNT_IN + 1).coerceAtMost(PAD_BEATS)} / $PAD_BEATS"
                     },
                     style = MaterialTheme.typography.displayMedium,
                 )
                 HandPads(app, onTap = { hand, t -> runner.tap(t, hand = hand) })
             }
-            SecondaryButton(if (phase == CalPhase.TOUCH) "מקשיב…" else "התחל", { runTouch() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
+            SecondaryButton(if (phase == CalPhase.TOUCH) "Listening…" else "Start", { runTouch() }, Modifier.fillMaxWidth(), enabled = phase == CalPhase.IDLE)
         }
 
     }

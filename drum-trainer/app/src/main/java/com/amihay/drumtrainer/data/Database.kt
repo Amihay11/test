@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.amihay.drumtrainer.model.RunRecord
 import kotlinx.coroutines.flow.Flow
 
-/** One round (a "סבב"). */
+/** One round. */
 @Entity
 data class RunEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

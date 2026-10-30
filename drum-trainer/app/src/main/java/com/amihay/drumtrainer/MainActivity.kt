@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             DrumTheme {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     // Surface provides the default (light) text colour for the dark theme.
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         Box(Modifier.safeDrawingPadding()) {
@@ -122,10 +122,10 @@ class MainActivity : ComponentActivity() {
 
 /** The four main places, reached from the bar at the bottom. */
 private enum class Tab(val label: String, val icon: ImageVector, val screen: Screen) {
-    HOME("בית", Icons.Filled.Home, Screen.Home),
-    LIBRARY("תרגילים", Icons.AutoMirrored.Filled.List, Screen.Library),
-    DRUMS("מערכת", AppIcons.Drum, Screen.Drums()),
-    PROGRESS("התקדמות", AppIcons.Chart, Screen.Progress),
+    HOME("Home", Icons.Filled.Home, Screen.Home),
+    LIBRARY("Exercises", Icons.AutoMirrored.Filled.List, Screen.Library),
+    DRUMS("Kit", AppIcons.Drum, Screen.Drums()),
+    PROGRESS("Progress", AppIcons.Chart, Screen.Progress),
 }
 
 private fun tabOf(screen: Screen): Tab? = when (screen) {
@@ -203,9 +203,9 @@ private fun PermissionNeeded(onAsk: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         IconBadge(AppIcons.Drum, size = 72.dp)
-        Text("האפליקציה מקשיבה למכות", style = MaterialTheme.typography.headlineMedium)
-        Text("דרך המיקרופון היא מודדת כל מכה. בלי הרשאת מיקרופון אין מה למדוד.",
+        Text("The app listens to your playing", style = MaterialTheme.typography.headlineMedium)
+        Text("It measures every hit through the microphone. Without microphone access there is nothing to measure.",
             style = MaterialTheme.typography.bodyMedium, color = Palette.muted, textAlign = TextAlign.Center)
-        PrimaryButton("לאשר מיקרופון", onAsk)
+        PrimaryButton("Allow microphone", onAsk)
     }
 }

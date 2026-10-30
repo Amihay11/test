@@ -59,9 +59,9 @@ private enum class GapPhase { SETUP, RUNNING, RATING, RESULTS }
 private data class GapPreset(val on: Int, val off: Int, val label: String)
 
 private val presets = listOf(
-    GapPreset(2, 2, "2 עם · 2 בלי"),
-    GapPreset(4, 4, "4 עם · 4 בלי"),
-    GapPreset(1, 3, "1 עם · 3 בלי"),
+    GapPreset(2, 2, "2 on · 2 off"),
+    GapPreset(4, 4, "4 on · 4 off"),
+    GapPreset(1, 3, "1 on · 3 off"),
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -133,30 +133,30 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
         phase = GapPhase.SETUP
     }
     Page(
-        "מטרונום עם חורים",
+        "Gap click",
         onBack = {
             job?.cancel()
             app.screen = app.home
         },
         bottomBar = when (phase) {
-            GapPhase.SETUP -> ({ PrimaryButton("התחל", ::start, icon = Icons.Filled.PlayArrow) })
-            GapPhase.RUNNING -> ({ QuietButton("עצור", stop, Modifier.fillMaxWidth()) })
+            GapPhase.SETUP -> ({ PrimaryButton("Start", ::start, icon = Icons.Filled.PlayArrow) })
+            GapPhase.RUNNING -> ({ QuietButton("Stop", stop, Modifier.fillMaxWidth()) })
             GapPhase.RATING -> null
             GapPhase.RESULTS -> ({
-                PrimaryButton("סבב נוסף", ::start, icon = Icons.Filled.Refresh)
-                SecondaryButton("שינוי הגדרות", { phase = GapPhase.SETUP }, Modifier.fillMaxWidth())
+                PrimaryButton("Again", ::start, icon = Icons.Filled.Refresh)
+                SecondaryButton("Settings", { phase = GapPhase.SETUP }, Modifier.fillMaxWidth())
             })
         },
     ) {
         when (phase) {
             GapPhase.SETUP -> {
-                Text("הקליק מנגן כמה תיבות ונעלם. ממשיכים לנגן באותו טמפו – וכשהקליק חוזר רואים אם החזקת את הזמן.",
+                Text("The click plays for a few bars and then drops out. Keep playing at the same tempo, and when it comes back you see whether you held the time.",
                     style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
-                Section("טמפו") { TempoControl(bpm, { bpm = it }) }
-                Section("הסבב") {
-                    Field("דפוס") { Segmented(presets.map { it to it.label }, preset, { preset = it }) }
-                    Field("מה לנגן") { Segmented(listOf(1 to "רבעים", 2 to "שמיניות"), stepsPerBeat, { stepsPerBeat = it }) }
-                    Field("מחזורים") { Segmented(listOf(2, 4, 8).map { it to "$it" }, cycles, { cycles = it }) }
+                Section("Tempo") { TempoControl(bpm, { bpm = it }) }
+                Section("Round") {
+                    Field("Pattern") { Segmented(presets.map { it to it.label }, preset, { preset = it }) }
+                    Field("What to play") { Segmented(listOf(1 to "Quarters", 2 to "Eighths"), stepsPerBeat, { stepsPerBeat = it }) }
+                    Field("Cycles") { Segmented(listOf(2, 4, 8).map { it to "$it" }, cycles, { cycles = it }) }
                 }
             }
 
@@ -170,15 +170,15 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
                     when {
                         beat < 0 -> Text("${(floor(beat).toInt() + p.countInBeats + 1).coerceIn(1, p.countInBeats)}",
                             style = MaterialTheme.typography.displayLarge)
-                        bar < p.bars && p.clickBars[bar] -> Text("קליק", style = MaterialTheme.typography.displayLarge, color = Palette.accent)
-                        bar < p.bars -> Text("שקט", style = MaterialTheme.typography.displayLarge, color = Palette.off)
-                        else -> Text("סוף", style = MaterialTheme.typography.displayLarge)
+                        bar < p.bars && p.clickBars[bar] -> Text("Click", style = MaterialTheme.typography.displayLarge, color = Palette.accent)
+                        bar < p.bars -> Text("Silence", style = MaterialTheme.typography.displayLarge, color = Palette.off)
+                        else -> Text("End", style = MaterialTheme.typography.displayLarge)
                     }
-                    Text("תיבה ${(bar + 1).coerceIn(1, p.bars)} / ${p.bars}", style = MaterialTheme.typography.titleMedium,
+                    Text("Bar ${(bar + 1).coerceIn(1, p.bars)} / ${p.bars}", style = MaterialTheme.typography.titleMedium,
                         color = Palette.muted)
                 }
                 // Deliberately no beat indicator: during the silence the time must come from you.
-                StatTile("מכה אחרונה", last?.let { fmtMs(it) } ?: "—", Modifier.fillMaxWidth(),
+                StatTile("Last hit", last?.let { fmtMs(it) } ?: "—", Modifier.fillMaxWidth(),
                     color = when {
                         last == null -> Palette.muted
                         abs(last) <= GOOD_MS -> Palette.good
@@ -188,7 +188,7 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
             }
 
             GapPhase.RATING -> Panel(padding = 20.dp, spacing = 16.dp) {
-                Text("כמה החזקת את הזמן בשקט?", style = MaterialTheme.typography.headlineSmall)
+                Text("How well did you hold the time in the silence?", style = MaterialTheme.typography.headlineSmall)
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         (1..5).forEach { r ->
@@ -197,30 +197,30 @@ fun GapScreen(app: AppState, setup: GapSetup? = null, initialBpm: Int? = null) {
                         }
                     }
                 }
-                TextButton(onClick = { finish(null) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("דלג") }
+                TextButton(onClick = { finish(null) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Skip") }
             }
 
             GapPhase.RESULTS -> result?.let { g ->
                 StatGrid {
-                    StatTile("עם קליק", "${fmt1(g.withClick.stdMs)}ms", Modifier.weight(1f), sub = "פיזור · ממוצע ${fmtMs(g.withClick.meanMs)}")
-                    StatTile("בשקט", "${fmt1(g.silent.stdMs)}ms", Modifier.weight(1f), sub = "פיזור · ממוצע ${fmtMs(g.silent.meanMs)}",
+                    StatTile("With click", "${fmt1(g.withClick.stdMs)}ms", Modifier.weight(1f), sub = "spread · avg ${fmtMs(g.withClick.meanMs)}")
+                    StatTile("In silence", "${fmt1(g.silent.stdMs)}ms", Modifier.weight(1f), sub = "spread · avg ${fmtMs(g.silent.meanMs)}",
                         color = if (g.silent.stdMs <= 2 * GOOD_MS) Palette.good else Palette.off)
                     g.silentBpm?.let {
                         val diff = it - bpm
-                        StatTile("טמפו בשקט", fmt1(it), Modifier.weight(1f), sub = when {
-                            diff > 1 -> "מאיץ ב-$LRI${fmt1(diff)} BPM$PDI"
-                            diff < -1 -> "מאט ב-$LRI${fmt1(-diff)} BPM$PDI"
-                            else -> "יציב"
+                        StatTile("Tempo in silence", fmt1(it), Modifier.weight(1f), sub = when {
+                            diff > 1 -> "rushing by ${fmt1(diff)} BPM"
+                            diff < -1 -> "dragging by ${fmt1(-diff)} BPM"
+                            else -> "steady"
                         }, color = if (abs(diff) <= 1) Palette.good else Palette.off)
                     }
-                    g.driftBpmPerMin?.let { StatTile("זחילה", fmtMs(it), Modifier.weight(1f), sub = "BPM לדקה, לאורך הסבב") }
+                    g.driftBpmPerMin?.let { StatTile("Drift", fmtMs(it), Modifier.weight(1f), sub = "BPM per minute, over the round") }
                 }
                 if (g.segments.isNotEmpty()) {
-                    Section("טמפו בכל קטע שקט") {
+                    Section("Tempo in each silent stretch") {
                         StatGrid {
                             g.segments.forEachIndexed { i, s ->
-                                StatTile("קטע ${i + 1}", s.playedBpm?.let { fmt1(it) } ?: "—", Modifier.weight(1f),
-                                    sub = "סטייה ממוצעת ${s.meanMs.roundToInt()}ms")
+                                StatTile("Stretch ${i + 1}", s.playedBpm?.let { fmt1(it) } ?: "—", Modifier.weight(1f),
+                                    sub = "avg offset ${s.meanMs.roundToInt()}ms")
                             }
                         }
                     }

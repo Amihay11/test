@@ -46,7 +46,7 @@ private data class LiveHit(val result: Classification, val strength: Float, val 
 
 fun describe(c: Classification): String = when {
     c.pads.isEmpty() -> "?"
-    else -> c.pads.joinToString(" + ") { it.he }
+    else -> c.pads.joinToString(" + ") { it.label }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -74,7 +74,7 @@ fun KitScreen(app: AppState) {
                     recorded += TrainingSample(pad, f)
                     if (recorded.size >= HITS_PER_PAD) {
                         app.replacePadSamples(pad, recorded.toList())
-                        message = "${pad.he}: נלמדו $HITS_PER_PAD מכות."
+                        message = "${pad.label}: learned $HITS_PER_PAD hits."
                         recorded.clear()
                         recording = null
                         break
@@ -92,20 +92,20 @@ fun KitScreen(app: AppState) {
         }
     }
 
-    Page("לימוד התופים שלך", onBack = { app.screen = Screen.Settings }) {
+    Page("Learn your drums", onBack = { app.screen = Screen.Settings }) {
 
         val pad = recording
         if (pad != null) {
-            Section("לימוד: ${pad.he}") {
+            Section("Learning: ${pad.label}") {
                 Text(
-                    "הכה $HITS_PER_PAD פעמים על ה${pad.he} בלבד, בעוצמות שונות – חזק, בינוני וחלש. " +
-                        "השאר רווח קטן בין המכות.",
+                    "Hit the ${pad.label} only, $HITS_PER_PAD times, at different strengths: loud, medium and soft. " +
+                        "Leave a short gap between hits.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                Text("$LRM${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium,
+                Text("${recorded.size} / $HITS_PER_PAD", style = MaterialTheme.typography.displayMedium,
                     modifier = Modifier.align(Alignment.CenterHorizontally))
                 Box(Modifier.align(Alignment.CenterHorizontally)) { Dots(recorded.size, HITS_PER_PAD, Palette.good) }
-                QuietButton("ביטול", {
+                QuietButton("Cancel", {
                     recorded.clear()
                     recording = null
                 }, Modifier.fillMaxWidth())
@@ -114,23 +114,23 @@ fun KitScreen(app: AppState) {
         }
 
         Text(
-            "כל פד נשמע אחרת דרך הרמקול. מלמדים את האפליקציה פד אחרי פד, ואז בודקים שהיא מזהה נכון.",
+            "Every pad sounds different through the speaker. Teach the app one pad at a time, then check that it recognizes them.",
             style = MaterialTheme.typography.bodyMedium, color = Palette.muted,
         )
         message?.let { Banner(it, Palette.good) }
 
-        Section("לימוד פדים") {
+        Section("Pads") {
             val counts = app.padSamples.groupingBy { it.pad }.eachCount()
             Pad.entries.forEach { p ->
                 val n = counts[p] ?: 0
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Text(p.he, style = MaterialTheme.typography.titleMedium)
-                        Text(if (n == 0) "לא נלמד" else "נלמד · $n מכות", style = MaterialTheme.typography.bodySmall,
+                        Text(p.label, style = MaterialTheme.typography.titleMedium)
+                        Text(if (n == 0) "Not learned" else "Learned · $n hits", style = MaterialTheme.typography.bodySmall,
                             color = if (n == 0) Palette.muted else Palette.good)
                     }
-                    if (n > 0) TextButton(onClick = { app.replacePadSamples(p, emptyList()) }) { Text("מחק", color = Palette.muted) }
-                    SecondaryButton(if (n == 0) "למד" else "שוב", {
+                    if (n > 0) TextButton(onClick = { app.replacePadSamples(p, emptyList()) }) { Text("Delete", color = Palette.muted) }
+                    SecondaryButton(if (n == 0) "Learn" else "Redo", {
                         message = null
                         recorded.clear()
                         recording = p
@@ -139,12 +139,12 @@ fun KitScreen(app: AppState) {
             }
         }
 
-        Section("בדיקה") {
+        Section("Test") {
             if (!app.classifier.isUsable) {
-                Text("קודם למד לפחות פד אחד.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+                Text("Learn at least one pad first.", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
                 return@Section
             }
-            Text("הכה על הפדים – כאן מופיע מה זוהה בכל מכה.", style = MaterialTheme.typography.bodyMedium)
+            Text("Hit the pads: what each hit was recognized as shows here.", style = MaterialTheme.typography.bodyMedium)
             val last = live.firstOrNull()
             Text(
                 last?.let { describe(it.result) } ?: "—",
@@ -159,7 +159,7 @@ fun KitScreen(app: AppState) {
             )
             last?.let {
                 val db = if (it.strength > 0) (20 * log10(it.strength)).roundToInt() else -90
-                CenteredNote("ביטחון ${(it.result.confidence * 100).roundToInt()}% · עוצמה $db dBFS")
+                CenteredNote("Confidence ${(it.result.confidence * 100).roundToInt()}% · level $db dBFS")
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 live.forEach { h ->
@@ -176,11 +176,11 @@ fun KitScreen(app: AppState) {
                 }
             }
 
-            Text("בדיקת דיוק: בחר פד, הכה עליו כמה פעמים וראה כמה זוהו נכון.", style = MaterialTheme.typography.bodyMedium)
+            Text("Accuracy check: pick a pad, hit it a few times and see how many were recognized.", style = MaterialTheme.typography.bodyMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 app.classifier.pads.sortedBy { it.ordinal }.forEach { p ->
                     val selected = target == p
-                    ChoiceChip(p.he, selected) {
+                    ChoiceChip(p.label, selected) {
                         target = if (selected) null else p
                         correct = 0
                         attempts = 0
@@ -189,7 +189,7 @@ fun KitScreen(app: AppState) {
             }
             target?.let { t ->
                 val pct = if (attempts > 0) " (${100 * correct / attempts}%)" else ""
-                Text("${t.he}: $LRM$correct / $attempts$LRM זוהו נכון$pct", style = MaterialTheme.typography.titleLarge,
+                Text("${t.label}: $correct / $attempts recognized$pct", style = MaterialTheme.typography.titleLarge,
                     color = if (attempts > 0 && correct * 10 >= attempts * 9) Palette.good else MaterialTheme.colorScheme.onSurface)
             }
         }

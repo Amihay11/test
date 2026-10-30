@@ -47,7 +47,7 @@ private fun rubik(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
-/** Rubik: Hebrew and Latin from the same design, with clear figures for the numbers. */
+/** Rubik: a rounded sans with clear figures for the numbers. */
 val Rubik = FontFamily(rubik(400), rubik(500), rubik(600), rubik(700))
 
 private val colors = darkColorScheme(

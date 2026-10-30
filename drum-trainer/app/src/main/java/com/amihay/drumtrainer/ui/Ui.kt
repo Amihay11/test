@@ -103,7 +103,7 @@ fun TopBar(title: String, onBack: (() -> Unit)?, subtitle: String? = null, actio
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "חזרה") }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
         } else {
             Spacer(Modifier.size(16.dp))
         }
@@ -329,7 +329,6 @@ fun Pill(text: String, color: Color = Palette.accent) {
 /** A thin progress bar. */
 @Composable
 fun Meter(fraction: Float, modifier: Modifier = Modifier, color: Color = Palette.accent) {
-    // Fills from the start of the line: the right side, in Hebrew.
     Box(modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Palette.pending)) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(6.dp).clip(RoundedCornerShape(3.dp)).background(color))
     }
